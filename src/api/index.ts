@@ -69,6 +69,55 @@ export async function submitAnswer(sessionId: string, answer: string): Promise<R
   });
 }
 
+/** SSE stream for answer evaluation with thinking steps. */
+export async function streamSubmitAnswer(
+  sessionId: string,
+  answer: string,
+  onThinking: (step: { agent: string; label: string; output: string }) => void,
+): Promise<{ item_id: number; is_correct: boolean; feedback: string; confidence: number; accuracy: number; auto_stop?: boolean; stop_reason?: string }> {
+  const resp = await fetch(`${BASE_URL}/api/v1/sessions/${sessionId}/stream_answer`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ answer }),
+  });
+  if (!resp.ok) {
+    const body = await resp.text();
+    throw new Error(`API ${resp.status}: ${body}`);
+  }
+  if (!resp.body) throw new Error('No response body');
+
+  const reader = resp.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split('\n');
+    buffer = lines.pop() || '';
+
+    let eventType = '';
+
+    for (const line of lines) {
+      if (line.startsWith('event: ')) {
+        eventType = line.slice(7).trim();
+      } else if (line.startsWith('data: ')) {
+        const parsed = JSON.parse(line.slice(6));
+        if (eventType === 'thinking') {
+          onThinking(parsed);
+        } else if (eventType === 'answer') {
+          return parsed;
+        } else if (eventType === 'error') {
+          throw new Error(parsed.error || 'Stream error');
+        }
+      }
+    }
+  }
+  throw new Error('Stream ended without answer data');
+}
+
 export async function endSession(sessionId: string): Promise<{ session_id: string; summary: Record<string, unknown> }> {
   return fetchJson(`${BASE_URL}/api/v1/sessions/${sessionId}/end`, { method: 'POST' });
 }

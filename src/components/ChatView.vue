@@ -103,7 +103,7 @@
 <script setup lang="ts">
 import { ref, watch, computed, nextTick } from 'vue';
 import { useSessionStore } from '@/stores/session';
-import { streamQuestion, submitAnswer, getConfidence, streamColdStart, streamColdStartAnswer } from '@/api';
+import { streamQuestion, getConfidence, streamColdStart, streamColdStartAnswer, streamSubmitAnswer } from '@/api';
 import type { ItemData, ThinkingStep, ConfidenceStats } from '@/types';
 import MessageBubble from '@/components/MessageBubble.vue';
 import ThinkingSidebar from '@/components/ThinkingSidebar.vue';
@@ -282,8 +282,13 @@ async function handleAnswer(answer: string) {
     sessionStore.isWaitingAnswer = false;
     sessionStore.isLoading = true;
     sessionStore.error = null;
+    liveThinking.value = [];
 
-    const resp = await submitAnswer(sessionStore.sessionId, answer);
+    const resp = await streamSubmitAnswer(sessionStore.sessionId, answer, (step) => {
+      liveThinking.value.push(step);
+      scrollToBottom();
+    });
+
     const feedback = (resp.feedback as string) || '';
     const isCorrect = resp.is_correct as boolean | undefined;
 
@@ -292,16 +297,25 @@ async function handleAnswer(answer: string) {
       role: 'feedback',
       content: feedback || (isCorrect !== undefined ? (isCorrect ? '回答正确！' : '回答不正确。') : '回答已记录。'),
       timestamp: new Date().toISOString(),
+      thinking_steps: liveThinking.value.map(s => ({ agent: s.label || s.agent, agent_key: s.agent, output: s.output })),
     });
     scrollToBottom();
+
+    confidence.value.confidence = (resp.confidence as number) ?? 0;
+    confidence.value.accuracy = (resp.accuracy as number) ?? 0;
+    confidence.value.should_stop = resp.auto_stop as boolean;
 
     await updateConfidence();
     emit('profileUpdate');
     if (!confidence.value.should_stop) {
       await fetchNextQuestion();
     }
+
+    liveThinking.value = [];
   } catch (e) {
     sessionStore.error = e instanceof Error ? e.message : '提交答案失败';
+    liveThinking.value = [];
+  } finally {
     sessionStore.isLoading = false;
   }
 }
