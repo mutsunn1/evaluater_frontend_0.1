@@ -32,19 +32,26 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
 import type { ItemData } from '@/types';
 
 const props = defineProps<{ data: ItemData }>();
 const emit = defineEmits<{ submit: [text: string] }>();
 
 const subAnswers = ref<Record<string, string>>({});
-// Initialize answers for each sub-question
-if (props.data.sub_questions) {
-  for (const sq of props.data.sub_questions) {
-    subAnswers.value[sq.sub_id] = '';
+
+function initAnswers() {
+  subAnswers.value = {};
+  if (props.data.sub_questions) {
+    for (const sq of props.data.sub_questions) {
+      subAnswers.value[sq.sub_id] = '';
+    }
   }
 }
+
+// Initialize on mount and re-init if question changes (HMR-safe)
+initAnswers();
+watch(() => props.data, initAnswers);
 
 const allAnswered = computed(() => {
   if (!props.data.sub_questions?.length) return false;

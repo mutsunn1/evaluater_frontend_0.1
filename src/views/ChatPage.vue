@@ -38,6 +38,8 @@ import { useRouter } from 'vue-router';
 import ChatView from '@/components/ChatView.vue';
 import SessionReport from '@/components/SessionReport.vue';
 import UserProfileSidebar from '@/components/UserProfileSidebar.vue';
+import { endSession, getConfidence } from '@/api';
+import { buildSessionResult, createDefaultConfidence } from '@/utils/session';
 
 const auth = useAuthStore();
 const sessionStore = useSessionStore();
@@ -50,14 +52,18 @@ function handleLogout() {
   router.push('/');
 }
 
-function handleEndSession() {
-  sessionStore.sessionResult = {
-    total_items: 0,
-    average_score: 0,
-    improved_areas: [],
-    regressed_areas: [],
-    next_focus: [],
-  };
+async function handleEndSession() {
+  if (!sessionStore.sessionId) return;
+  try {
+    const [endResp, confResp] = await Promise.all([
+      endSession(sessionStore.sessionId),
+      getConfidence(sessionStore.sessionId),
+    ]);
+    const summary = endResp.summary as Record<string, unknown> | undefined;
+    sessionStore.sessionResult = buildSessionResult(summary, confResp);
+  } catch {
+    sessionStore.sessionResult = buildSessionResult(undefined, createDefaultConfidence());
+  }
 }
 
 function onProfileUpdate() {

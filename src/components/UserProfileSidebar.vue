@@ -16,6 +16,9 @@
 
     <!-- Expanded content -->
     <div v-if="expanded" class="flex-1 overflow-y-auto p-4 space-y-6">
+      <div v-if="fetchFailed" class="rounded-lg border border-red-400/30 bg-red-900/20 px-3 py-2 text-xs text-red-300">
+        无法加载用户资料，请检查后端连接是否正常。
+      </div>
       <!-- HSK Level -->
       <div class="text-center">
         <div class="text-3xl font-bold text-blue-400">
@@ -82,7 +85,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useAuthStore } from '@/stores/auth';
 import { getUserProfile } from '@/api';
 import type { UserProfileData } from '@/types';
@@ -113,24 +116,38 @@ const hasData = computed(() => {
   return sl && (sl.hsk > 0 || sl.vocabulary > 0 || sl.grammar > 0 || sl.reading > 0);
 });
 
+const fetchFailed = ref(false);
+
 async function fetchProfile() {
   if (!auth.userId) return;
   try {
     const data = await getUserProfile(auth.userId);
     profile.value = data as UserProfileData;
-  } catch { /* ignore */ }
+    fetchFailed.value = false;
+  } catch (e) {
+    console.error('Failed to load user profile:', e);
+    fetchFailed.value = true;
+  }
 }
 
 function formatTime(ts: string) {
   try { return new Date(ts).toLocaleString('zh-CN'); } catch { return ''; }
 }
 
+let profileInterval: ReturnType<typeof setInterval> | null = null;
+
 // Initial fetch
 fetchProfile();
 
-// Refresh every 30 seconds
+// Refresh every 30 seconds, cleaned up on unmount
 onMounted(() => {
-  setInterval(fetchProfile, 30000);
+  profileInterval = setInterval(fetchProfile, 30000);
+});
+
+onUnmounted(() => {
+  if (profileInterval) {
+    clearInterval(profileInterval);
+  }
 });
 
 // Expose for manual refresh

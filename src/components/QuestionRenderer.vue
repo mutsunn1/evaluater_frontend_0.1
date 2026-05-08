@@ -3,12 +3,12 @@
     <!-- Question meta -->
     <div class="mb-2 flex items-center gap-2 text-xs text-gray-500">
       <span class="rounded bg-blue-50 px-1.5 py-0.5 font-medium">{{ itemData.scene }}</span>
-      <span>{{ itemData.grammar_focus }}</span>
+      <span v-if="itemData.grammar_focus">{{ itemData.grammar_focus }}</span>
       <span>{{ itemData.target_level }}</span>
     </div>
 
     <!-- Dispatch to specific renderer -->
-    <MultipleChoice v-if="itemData.question_type === 'multiple_choice'" :data="itemData" @select="emitAnswer" />
+    <MultipleChoice v-if="itemData.question_type === 'multiple_choice' || itemData.question_type === 'multiple_select'" :data="itemData" @select="emitAnswer" />
     <TrueFalse v-else-if="itemData.question_type === 'true_false'" :data="itemData" @select="emitAnswer" />
     <FillInBlank v-else-if="itemData.question_type === 'fill_in_blank'" :data="itemData" @submit="emitAnswer" />
     <ReadingComprehension v-else-if="itemData.question_type === 'reading_comprehension'" :data="itemData" @submit="emitAnswer" />
