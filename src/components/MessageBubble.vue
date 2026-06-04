@@ -231,14 +231,13 @@ function toggleMultiSelect(qi: number, index: string) {
 
 const canBatchSubmit = computed(() => {
   const questions = props.message.batch_questions || [];
-  return questions.every((q, qi) => {
-    if (q.question_type === 'multiple_choice' || q.question_type === 'true_false') {
-      return !!batchAnswers.value[qi];
-    }
-    if (q.question_type === 'multiple_select') {
-      return selectedMulti.value[qi] && selectedMulti.value[qi].length > 0;
-    }
-    return !!batchFillAnswers.value[qi]?.trim();
+  return questions.every((_q, qi) => {
+    // Any answer method counts, regardless of question_type:
+    // - click/toggle answers (batchAnswers / selectedMulti)
+    // - text input answers (batchFillAnswers)
+    return !!batchAnswers.value[qi]
+      || (selectedMulti.value[qi] && selectedMulti.value[qi].length > 0)
+      || !!batchFillAnswers.value[qi]?.trim();
   });
 });
 

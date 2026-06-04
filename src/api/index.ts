@@ -24,8 +24,10 @@ export async function streamQuestion(
   sessionId: string,
   onThinking: (step: { agent: string; label: string; output: string }) => void,
   signal?: AbortSignal,
+  requestId?: string,
 ): Promise<{ questions: ItemData[]; batch_id: string }> {
-  const resp = await fetch(`${BASE_URL}/api/v1/sessions/${sessionId}/question`, { signal });
+  const requestQuery = requestId ? `?request_id=${encodeURIComponent(requestId)}` : '';
+  const resp = await fetch(`${BASE_URL}/api/v1/sessions/${sessionId}/question${requestQuery}`, { signal });
   if (!resp.ok) {
     const body = await resp.text();
     throw new Error(`API ${resp.status}: ${body}`);
@@ -96,11 +98,12 @@ export async function batchSubmitAnswer(
   answers: Array<{ question_index: number; answer: string }>,
   onThinking: (step: { agent: string; label: string; output: string }) => void,
   signal?: AbortSignal,
+  submissionId?: string,
 ): Promise<{ results: Array<Record<string, unknown>>; confidence: number; accuracy: number; auto_stop?: boolean; stop_reason?: string }> {
   const resp = await fetch(`${BASE_URL}/api/v1/sessions/${sessionId}/batch_answer`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ answers }),
+    body: JSON.stringify({ ...(submissionId ? { submission_id: submissionId } : {}), answers }),
     signal,
   });
   if (!resp.ok) {

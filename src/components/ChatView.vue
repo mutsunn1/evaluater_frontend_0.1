@@ -51,7 +51,17 @@
         </div>
 
         <div v-if="sessionStore.error" class="flex justify-center">
-          <div class="rounded-lg bg-red-50 px-4 py-2 text-sm text-red-600">{{ sessionStore.error }}</div>
+          <div class="flex items-center gap-3 rounded-lg bg-red-50 px-4 py-2 text-sm text-red-600">
+            <span>{{ sessionStore.error }}</span>
+            <button
+              v-if="questionRetryRequestId"
+              data-testid="retry-question"
+              class="rounded border border-red-200 bg-white px-2 py-1 text-xs font-medium text-red-700 hover:bg-red-100"
+              @click="retryQuestion"
+            >
+              重试
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -127,6 +137,8 @@ const sidebarOpen = ref(false);
 const sidebarSteps = ref<ThinkingStep[]>([]);
 
 let abortController: AbortController | null = null;
+const activeQuestionRequestId = ref<string | null>(null);
+const questionRetryRequestId = ref<string | null>(null);
 
 function getSignal(): AbortSignal {
   abortController = new AbortController();
@@ -369,11 +381,14 @@ async function handleSend() {
   await handleAnswer(text);
 }
 
-async function fetchNextQuestion() {
+async function fetchNextQuestion(requestId?: string) {
   if (!sessionStore.sessionId) return;
+  const questionRequestId = requestId || crypto.randomUUID();
+  activeQuestionRequestId.value = questionRequestId;
   sessionStore.isLoading = true;
   sessionStore.loadingPhase = 'generating';
   sessionStore.error = null;
+  questionRetryRequestId.value = null;
   liveThinking.value = [];
 
   try {
@@ -386,7 +401,7 @@ async function fetchNextQuestion() {
         agent_key: step.agent,
         output: step.output,
       });
-    }, getSignal());
+    }, getSignal(), questionRequestId);
 
     const questions = resp.questions;
 
@@ -414,18 +429,27 @@ async function fetchNextQuestion() {
     }
 
     questionPushedAt = Date.now();
+    activeQuestionRequestId.value = null;
+    questionRetryRequestId.value = null;
     liveThinking.value = [];
   } catch (e) {
     sessionStore.error = e instanceof Error ? e.message : '获取题目失败';
+    questionRetryRequestId.value = questionRequestId;
     liveThinking.value = [];
   } finally {
     sessionStore.isLoading = false;
   }
 }
 
+async function retryQuestion() {
+  if (!questionRetryRequestId.value || sessionStore.isLoading) return;
+  await fetchNextQuestion(questionRetryRequestId.value);
+}
+
 /** Handle batch submit: all questions in the current batch */
 async function handleBatchSubmit(answers: Array<{ question_index: number; answer: string }>) {
   if (!sessionStore.sessionId) return;
+  const submissionId = crypto.randomUUID();
 
   // Add user answers as a single message
   const answerSummary = answers.map(a => `第${a.question_index + 1}题: ${a.answer}`).join('\n');
@@ -447,7 +471,7 @@ async function handleBatchSubmit(answers: Array<{ question_index: number; answer
     const resp = await batchSubmitAnswer(sessionStore.sessionId, answers, (step) => {
       liveThinking.value.push(step);
       scrollToBottom();
-    }, getSignal());
+    }, getSignal(), submissionId);
     const results = resp.results as Array<Record<string, unknown>>;
 
     // Show feedback for each question
