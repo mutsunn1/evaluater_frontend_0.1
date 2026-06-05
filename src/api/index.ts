@@ -14,6 +14,73 @@ async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
   return resp.json();
 }
 
+type SsePayload = Record<string, unknown>;
+
+async function readSseEvents(
+  resp: Response,
+  onEvent: (eventType: string, parsed: SsePayload) => boolean | void,
+) {
+  if (!resp.body) throw new Error('No response body');
+
+  const reader = resp.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  let eventType = 'message';
+  let dataLines: string[] = [];
+
+  const dispatch = () => {
+    if (dataLines.length === 0) {
+      eventType = 'message';
+      return true;
+    }
+    const data = dataLines.join('\n');
+    dataLines = [];
+    const currentType = eventType;
+    eventType = 'message';
+
+    let parsed: SsePayload;
+    try {
+      parsed = JSON.parse(data);
+    } catch {
+      return true;
+    }
+    return onEvent(currentType, parsed) !== false;
+  };
+
+  const processLine = (rawLine: string) => {
+    const line = rawLine.endsWith('\r') ? rawLine.slice(0, -1) : rawLine;
+    if (line === '') return dispatch();
+    if (line.startsWith('event: ')) {
+      eventType = line.slice(7).trim();
+      return true;
+    }
+    if (line.startsWith('data: ')) {
+      dataLines.push(line.slice(6));
+      return true;
+    }
+    return true;
+  };
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split('\n');
+    buffer = lines.pop() || '';
+
+    for (const line of lines) {
+      if (!processLine(line)) return;
+    }
+  }
+
+  buffer += decoder.decode();
+  if (buffer) {
+    processLine(buffer);
+  }
+  dispatch();
+}
+
 export async function createSession(userId: string): Promise<{ session_id: string; user_id: string; hsk_level: number }> {
   return fetchJson(`${BASE_URL}/api/v1/sessions?user_id=${encodeURIComponent(userId)}`, { method: 'POST' });
 }
@@ -32,55 +99,26 @@ export async function streamQuestion(
     const body = await resp.text();
     throw new Error(`API ${resp.status}: ${body}`);
   }
-  if (!resp.body) throw new Error('No response body');
-
-  const reader = resp.body.getReader();
-  const decoder = new TextDecoder();
-  let buffer = '';
   const questions: ItemData[] = [];
   let batchId = '';
 
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-
-    buffer += decoder.decode(value, { stream: true });
-    const lines = buffer.split('\n');
-    buffer = lines.pop() || '';
-
-    let eventType = '';
-    let dataLine = '';
-
-    for (const line of lines) {
-      if (line.startsWith('event: ')) {
-        eventType = line.slice(7).trim();
-      } else if (line.startsWith('data: ')) {
-        dataLine = line.slice(6);
-        let parsed: Record<string, unknown>;
-        try {
-          parsed = JSON.parse(dataLine);
-        } catch {
-          continue; // skip malformed SSE data lines (e.g. empty or BOM)
-        }
-        if (eventType === 'thinking') {
-          onThinking(parsed as { agent: string; label: string; output: string });
-        } else if (eventType === 'question') {
-          // Merge question data with the nested "question" object
-          const qData = (parsed.question as Record<string, unknown>) || {};
-          questions.push({
-            ...qData,
-            batch_id: parsed.batch_id as string,
-            batch_index: parsed.batch_index as number,
-            batch_total: parsed.batch_total as number,
-            skill_dimension: parsed.skill_dimension as 'vocabulary' | 'grammar' | 'reading',
-          } as ItemData);
-          batchId = (parsed.batch_id as string) || batchId;
-        } else if (eventType === 'error') {
-          throw new Error((parsed.error as string) || 'Stream error');
-        }
-      }
+  await readSseEvents(resp, (eventType, parsed) => {
+    if (eventType === 'thinking') {
+      onThinking(parsed as { agent: string; label: string; output: string });
+    } else if (eventType === 'question') {
+      const qData = (parsed.question as Record<string, unknown>) || {};
+      questions.push({
+        ...qData,
+        batch_id: parsed.batch_id as string,
+        batch_index: parsed.batch_index as number,
+        batch_total: parsed.batch_total as number,
+        skill_dimension: parsed.skill_dimension as 'vocabulary' | 'grammar' | 'reading',
+      } as ItemData);
+      batchId = (parsed.batch_id as string) || batchId;
+    } else if (eventType === 'error') {
+      throw new Error((parsed.error as string) || 'Stream error');
     }
-  }
+  });
 
   if (questions.length === 0) {
     throw new Error('Stream ended without question data');
@@ -110,42 +148,22 @@ export async function batchSubmitAnswer(
     const body = await resp.text();
     throw new Error(`API ${resp.status}: ${body}`);
   }
-  if (!resp.body) throw new Error('No response body');
+  let answerData: { results: Array<Record<string, unknown>>; confidence: number; accuracy: number; auto_stop?: boolean; stop_reason?: string } | null = null;
 
-  const reader = resp.body.getReader();
-  const decoder = new TextDecoder();
-  let buffer = '';
-
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-
-    buffer += decoder.decode(value, { stream: true });
-    const lines = buffer.split('\n');
-    buffer = lines.pop() || '';
-
-    let eventType = '';
-
-    for (const line of lines) {
-      if (line.startsWith('event: ')) {
-        eventType = line.slice(7).trim();
-      } else if (line.startsWith('data: ')) {
-        let parsed: Record<string, unknown>;
-        try {
-          parsed = JSON.parse(line.slice(6));
-        } catch {
-          continue;
-        }
-        if (eventType === 'thinking') {
-          onThinking(parsed as { agent: string; label: string; output: string });
-        } else if (eventType === 'answer') {
-          return parsed as { results: Array<Record<string, unknown>>; confidence: number; accuracy: number; auto_stop?: boolean; stop_reason?: string };
-        } else if (eventType === 'error') {
-          throw new Error((parsed.error as string) || 'Stream error');
-        }
-        // question_feedback events are informational — thinking already streamed
-      }
+  await readSseEvents(resp, (eventType, parsed) => {
+    if (eventType === 'thinking') {
+      onThinking(parsed as { agent: string; label: string; output: string });
+    } else if (eventType === 'answer') {
+      answerData = parsed as { results: Array<Record<string, unknown>>; confidence: number; accuracy: number; auto_stop?: boolean; stop_reason?: string };
+      return false;
+    } else if (eventType === 'error') {
+      throw new Error((parsed.error as string) || 'Stream error');
     }
+    return true;
+  });
+
+  if (answerData) {
+    return answerData;
   }
   throw new Error('Stream ended without answer data');
 }
@@ -167,41 +185,22 @@ export async function streamSubmitAnswer(
     const body = await resp.text();
     throw new Error(`API ${resp.status}: ${body}`);
   }
-  if (!resp.body) throw new Error('No response body');
+  let answerData: { item_id: number; is_correct: boolean; feedback: string; confidence: number; accuracy: number; auto_stop?: boolean; stop_reason?: string } | null = null;
 
-  const reader = resp.body.getReader();
-  const decoder = new TextDecoder();
-  let buffer = '';
-
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-
-    buffer += decoder.decode(value, { stream: true });
-    const lines = buffer.split('\n');
-    buffer = lines.pop() || '';
-
-    let eventType = '';
-
-    for (const line of lines) {
-      if (line.startsWith('event: ')) {
-        eventType = line.slice(7).trim();
-      } else if (line.startsWith('data: ')) {
-        let parsed: Record<string, unknown>;
-        try {
-          parsed = JSON.parse(line.slice(6));
-        } catch {
-          continue;
-        }
-        if (eventType === 'thinking') {
-          onThinking(parsed as { agent: string; label: string; output: string });
-        } else if (eventType === 'answer') {
-          return parsed as { item_id: number; is_correct: boolean; feedback: string; confidence: number; accuracy: number; auto_stop?: boolean; stop_reason?: string };
-        } else if (eventType === 'error') {
-          throw new Error((parsed.error as string) || 'Stream error');
-        }
-      }
+  await readSseEvents(resp, (eventType, parsed) => {
+    if (eventType === 'thinking') {
+      onThinking(parsed as { agent: string; label: string; output: string });
+    } else if (eventType === 'answer') {
+      answerData = parsed as { item_id: number; is_correct: boolean; feedback: string; confidence: number; accuracy: number; auto_stop?: boolean; stop_reason?: string };
+      return false;
+    } else if (eventType === 'error') {
+      throw new Error((parsed.error as string) || 'Stream error');
     }
+    return true;
+  });
+
+  if (answerData) {
+    return answerData;
   }
   throw new Error('Stream ended without answer data');
 }
@@ -231,41 +230,22 @@ export async function streamColdStart(
     const body = await resp.text();
     throw new Error(`API ${resp.status}: ${body}`);
   }
-  if (!resp.body) throw new Error('No response body');
+  let questionData: { cold_start: boolean; round: number; label: string; question: string } | { cold_start_complete: boolean; initial_vector: unknown } | null = null;
 
-  const reader = resp.body.getReader();
-  const decoder = new TextDecoder();
-  let buffer = '';
-
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-
-    buffer += decoder.decode(value, { stream: true });
-    const lines = buffer.split('\n');
-    buffer = lines.pop() || '';
-
-    let eventType = '';
-
-    for (const line of lines) {
-      if (line.startsWith('event: ')) {
-        eventType = line.slice(7).trim();
-      } else if (line.startsWith('data: ')) {
-        let parsed: Record<string, unknown>;
-        try {
-          parsed = JSON.parse(line.slice(6));
-        } catch {
-          continue;
-        }
-        if (eventType === 'thinking') {
-          onThinking(parsed as { agent: string; label: string; output: string });
-        } else if (eventType === 'question') {
-          return parsed as { cold_start: boolean; round: number; label: string; question: string } | { cold_start_complete: boolean; initial_vector: unknown };
-        } else if (eventType === 'error') {
-          throw new Error((parsed.error as string) || 'Stream error');
-        }
-      }
+  await readSseEvents(resp, (eventType, parsed) => {
+    if (eventType === 'thinking') {
+      onThinking(parsed as { agent: string; label: string; output: string });
+    } else if (eventType === 'question') {
+      questionData = parsed as { cold_start: boolean; round: number; label: string; question: string } | { cold_start_complete: boolean; initial_vector: unknown };
+      return false;
+    } else if (eventType === 'error') {
+      throw new Error((parsed.error as string) || 'Stream error');
     }
+    return true;
+  });
+
+  if (questionData) {
+    return questionData;
   }
   throw new Error('Stream ended without question data');
 }
@@ -288,41 +268,22 @@ export async function streamColdStartAnswer(
     const body = await resp.text();
     throw new Error(`API ${resp.status}: ${body}`);
   }
-  if (!resp.body) throw new Error('No response body');
+  let answerData: { cold_start_complete: boolean; feedback: string; observer_output: string; grade_output: string; initial_vector?: unknown } | null = null;
 
-  const reader = resp.body.getReader();
-  const decoder = new TextDecoder();
-  let buffer = '';
-
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-
-    buffer += decoder.decode(value, { stream: true });
-    const lines = buffer.split('\n');
-    buffer = lines.pop() || '';
-
-    let eventType = '';
-
-    for (const line of lines) {
-      if (line.startsWith('event: ')) {
-        eventType = line.slice(7).trim();
-      } else if (line.startsWith('data: ')) {
-        let parsed: Record<string, unknown>;
-        try {
-          parsed = JSON.parse(line.slice(6));
-        } catch {
-          continue;
-        }
-        if (eventType === 'thinking') {
-          onThinking(parsed as { agent: string; label: string; output: string });
-        } else if (eventType === 'answer') {
-          return parsed as { cold_start_complete: boolean; feedback: string; observer_output: string; grade_output: string; initial_vector?: unknown };
-        } else if (eventType === 'error') {
-          throw new Error((parsed.error as string) || 'Stream error');
-        }
-      }
+  await readSseEvents(resp, (eventType, parsed) => {
+    if (eventType === 'thinking') {
+      onThinking(parsed as { agent: string; label: string; output: string });
+    } else if (eventType === 'answer') {
+      answerData = parsed as { cold_start_complete: boolean; feedback: string; observer_output: string; grade_output: string; initial_vector?: unknown };
+      return false;
+    } else if (eventType === 'error') {
+      throw new Error((parsed.error as string) || 'Stream error');
     }
+    return true;
+  });
+
+  if (answerData) {
+    return answerData;
   }
   throw new Error('Stream ended without answer data');
 }

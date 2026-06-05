@@ -473,6 +473,7 @@ async function handleBatchSubmit(answers: Array<{ question_index: number; answer
       scrollToBottom();
     }, getSignal(), submissionId);
     const results = resp.results as Array<Record<string, unknown>>;
+    const thinkingSteps = toThinkingSteps(liveThinking.value);
 
     // Show feedback for each question
     for (let i = 0; i < results.length; i++) {
@@ -487,6 +488,7 @@ async function handleBatchSubmit(answers: Array<{ question_index: number; answer
         role: 'feedback',
         content: `${dimText}第${answers[i]?.question_index + 1}题: ${feedback || (isCorrect !== undefined ? (isCorrect ? '回答正确！' : '回答不正确。') : '回答已记录。')}`,
         timestamp: new Date().toISOString(),
+        thinking_steps: i === 0 && thinkingSteps.length > 0 ? thinkingSteps : undefined,
       });
     }
     scrollToBottom();

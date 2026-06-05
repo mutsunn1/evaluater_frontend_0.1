@@ -130,4 +130,61 @@ describe('ChatView 批量提交幂等标识', () => {
     expect(vi.mocked(batchSubmitAnswer)).toHaveBeenCalledTimes(1);
     expect(vi.mocked(batchSubmitAnswer).mock.calls[0][4]).toEqual(expect.any(String));
   });
+
+  it('批量提交答案后应把 thinking 结果保存在反馈消息中', async () => {
+    const pinia = createPinia();
+    setActivePinia(pinia);
+    const store = useSessionStore();
+    store.sessionId = 'session-1';
+    store.messages = [
+      { id: 'welcome', role: 'system', content: '开始评测', timestamp: new Date().toISOString() },
+      {
+        id: 'question',
+        role: 'question',
+        content: '',
+        timestamp: new Date().toISOString(),
+        batch_questions: [{
+          question_type: 'multiple_choice',
+          scene: '日常',
+          grammar_focus: '问候语',
+          target_level: 'HSK1',
+          question_text: '你好吗？',
+          options: [{ index: 'A', text: '好' }],
+          skill_dimension: 'vocabulary',
+        }],
+      },
+    ];
+    store.currentQuestions = store.messages[1].batch_questions || [];
+    store.isWaitingAnswer = true;
+
+    vi.mocked(batchSubmitAnswer).mockImplementation(async (_sessionId, _answers, onThinking) => {
+      onThinking({
+        agent: 'thinking_coordinator',
+        label: '智能体分析',
+        output: '用户答题后，系统正在综合观察与评分结果。',
+      });
+      return {
+        results: [{ item_id: 1, is_correct: true, feedback: '回答正确！' }],
+        confidence: 0.2,
+        accuracy: 100,
+        auto_stop: false,
+      };
+    });
+
+    const wrapper = mountChatView(pinia, {
+      template: '<button data-testid="submit-batch" @click="$emit(\'batch-submit\', [{ question_index: 0, answer: \'A\' }])">提交</button>',
+      props: ['message'],
+      emits: ['batch-submit'],
+    });
+
+    await wrapper.get('button[data-testid="submit-batch"]').trigger('click');
+    await flushPromises();
+
+    const feedback = store.messages.find(msg => msg.role === 'feedback');
+    expect(feedback?.thinking_steps).toEqual([{
+      agent: '智能体分析',
+      agent_key: 'thinking_coordinator',
+      output: '用户答题后，系统正在综合观察与评分结果。',
+    }]);
+  });
 });
