@@ -125,6 +125,7 @@ import { useSessionStore } from '@/stores/session';
 import { streamQuestion, getConfidence, streamColdStart, streamColdStartAnswer, streamSubmitAnswer, batchSubmitAnswer, endSession } from '@/api';
 import { toThinkingSteps, createDefaultConfidence, buildSessionResult } from '@/utils/session';
 import { selectVisibleThinkingSteps } from '@/utils/thinking';
+import { createClientId } from '@/utils/id';
 import type { ThinkingStep, ConfidenceStats } from '@/types';
 import MessageBubble from '@/components/MessageBubble.vue';
 import ThinkingSidebar from '@/components/ThinkingSidebar.vue';
@@ -221,7 +222,7 @@ async function fetchColdStartRound() {
       // Cold start done → transition to normal evaluation
       sessionStore.isColdStart = false;
       sessionStore.addMessage({
-        id: crypto.randomUUID(),
+        id: createClientId(),
         role: 'system',
         content: '冷启动评测完成。根据你的表现，系统已初步了解你的中文水平。接下来进入正式评测。',
         timestamp: new Date().toISOString(),
@@ -236,7 +237,7 @@ async function fetchColdStartRound() {
     coldStartRound.value = q.round;
 
     sessionStore.addMessage({
-      id: crypto.randomUUID(),
+      id: createClientId(),
       role: 'cold_start',
       content: q.question,
       cold_start_data: { round: q.round, label: q.label },
@@ -259,7 +260,7 @@ async function handleColdStartAnswer(answer: string) {
   if (!sessionStore.sessionId) return;
 
   sessionStore.addMessage({
-    id: crypto.randomUUID(),
+    id: createClientId(),
     role: 'user',
     content: answer,
     timestamp: new Date().toISOString(),
@@ -279,7 +280,7 @@ async function handleColdStartAnswer(answer: string) {
     }, getSignal());
 
     sessionStore.addMessage({
-      id: crypto.randomUUID(),
+      id: createClientId(),
       role: 'feedback',
       content: resp.feedback || '作答已记录。',
       timestamp: new Date().toISOString(),
@@ -290,7 +291,7 @@ async function handleColdStartAnswer(answer: string) {
     if (resp.cold_start_complete) {
       sessionStore.isColdStart = false;
       sessionStore.addMessage({
-        id: crypto.randomUUID(),
+        id: createClientId(),
         role: 'system',
         content: (resp as Record<string, unknown>).message as string || '冷启动评测完成，即将进入正式评测。',
         timestamp: new Date().toISOString(),
@@ -324,7 +325,7 @@ async function handleAnswer(answer: string) {
   }
 
   sessionStore.addMessage({
-    id: crypto.randomUUID(),
+    id: createClientId(),
     role: 'user',
     content: answer,
     timestamp: new Date().toISOString(),
@@ -347,7 +348,7 @@ async function handleAnswer(answer: string) {
     const isCorrect = resp.is_correct as boolean | undefined;
 
     sessionStore.addMessage({
-      id: crypto.randomUUID(),
+      id: createClientId(),
       role: 'feedback',
       content: feedback || (isCorrect !== undefined ? (isCorrect ? '回答正确！' : '回答不正确。') : '回答已记录。'),
       timestamp: new Date().toISOString(),
@@ -383,7 +384,7 @@ async function handleSend() {
 
 async function fetchNextQuestion(requestId?: string) {
   if (!sessionStore.sessionId) return;
-  const questionRequestId = requestId || crypto.randomUUID();
+  const questionRequestId = requestId || createClientId();
   activeQuestionRequestId.value = questionRequestId;
   sessionStore.isLoading = true;
   sessionStore.loadingPhase = 'generating';
@@ -407,7 +408,7 @@ async function fetchNextQuestion(requestId?: string) {
 
     if (questions.length > 0) {
       sessionStore.addMessage({
-        id: crypto.randomUUID(),
+        id: createClientId(),
         role: 'question',
         content: '',
         batch_questions: questions,
@@ -420,7 +421,7 @@ async function fetchNextQuestion(requestId?: string) {
       scrollToLatest();
     } else {
       sessionStore.addMessage({
-        id: crypto.randomUUID(),
+        id: createClientId(),
         role: 'question',
         content: '题目生成异常',
         timestamp: new Date().toISOString(),
@@ -449,12 +450,12 @@ async function retryQuestion() {
 /** Handle batch submit: all questions in the current batch */
 async function handleBatchSubmit(answers: Array<{ question_index: number; answer: string }>) {
   if (!sessionStore.sessionId) return;
-  const submissionId = crypto.randomUUID();
+  const submissionId = createClientId();
 
   // Add user answers as a single message
   const answerSummary = answers.map(a => `第${a.question_index + 1}题: ${a.answer}`).join('\n');
   sessionStore.addMessage({
-    id: crypto.randomUUID(),
+    id: createClientId(),
     role: 'user',
     content: answerSummary,
     timestamp: new Date().toISOString(),
@@ -484,7 +485,7 @@ async function handleBatchSubmit(answers: Array<{ question_index: number; answer
       const dimText = dim ? `[${dim}] ` : '';
 
       sessionStore.addMessage({
-        id: crypto.randomUUID(),
+        id: createClientId(),
         role: 'feedback',
         content: `${dimText}第${answers[i]?.question_index + 1}题: ${feedback || (isCorrect !== undefined ? (isCorrect ? '回答正确！' : '回答不正确。') : '回答已记录。')}`,
         timestamp: new Date().toISOString(),

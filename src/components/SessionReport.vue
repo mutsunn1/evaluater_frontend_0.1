@@ -85,6 +85,7 @@ import { useSessionStore } from '@/stores/session';
 import { createSession } from '@/api';
 import type { SessionResult } from '@/types';
 import { marked } from 'marked';
+import { createClientId } from '@/utils/id';
 
 defineProps<{ result: SessionResult }>();
 const router = useRouter();
@@ -105,14 +106,14 @@ async function handleNewSession() {
     if ((resp as Record<string, unknown>).needs_cold_start === true) {
       sessionStore.isColdStart = true;
       sessionStore.addMessage({
-        id: crypto.randomUUID(),
+        id: createClientId(),
         role: 'system',
         content: '你好！欢迎来到中文水平评测系统。在开始正式评测之前，我需要先了解一些你的背景信息。',
         timestamp: new Date().toISOString(),
       });
     } else {
       sessionStore.addMessage({
-        id: crypto.randomUUID(),
+        id: createClientId(),
         role: 'system',
         content: '你好，我是中文水平评测系统。我将根据你的水平进行能力评估，请认真作答。',
         timestamp: new Date().toISOString(),

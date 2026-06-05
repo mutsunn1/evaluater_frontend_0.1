@@ -77,6 +77,40 @@ describe('ChatView 正式出题重试', () => {
     expect(store.currentQuestions[0].question_text).toBe('你好吗？');
     expect(store.isWaitingAnswer).toBe(true);
   });
+
+  it('crypto.randomUUID 不存在时仍应能生成 question_request_id', async () => {
+    const originalRandomUUID = crypto.randomUUID;
+    Object.defineProperty(crypto, 'randomUUID', {
+      configurable: true,
+      value: undefined,
+    });
+
+    const pinia = createPinia();
+    setActivePinia(pinia);
+    const store = useSessionStore();
+    store.sessionId = 'session-1';
+    store.messages = [{
+      id: 'welcome',
+      role: 'system',
+      content: '开始评测',
+      timestamp: new Date().toISOString(),
+    }];
+
+    vi.mocked(streamQuestion).mockRejectedValueOnce(new TypeError('Failed to fetch'));
+
+    try {
+      mountChatView(pinia);
+      await flushPromises();
+    } finally {
+      Object.defineProperty(crypto, 'randomUUID', {
+        configurable: true,
+        value: originalRandomUUID,
+      });
+    }
+
+    expect(vi.mocked(streamQuestion).mock.calls[0][3]).toEqual(expect.any(String));
+    expect(store.error).toBe('Failed to fetch');
+  });
 });
 
 describe('ChatView 实时思考气泡', () => {
