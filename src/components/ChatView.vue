@@ -18,7 +18,7 @@
           @open-thinking="onOpenThinking"
         />
 
-        <!-- Live thinking steps (show latest 2 only) -->
+        <!-- Live thinking steps -->
         <div v-if="liveThinking.length > 0" class="flex justify-start">
           <div class="max-w-[80%] space-y-1.5">
             <div
@@ -124,6 +124,7 @@ import { ref, watch, computed, nextTick, onUnmounted } from 'vue';
 import { useSessionStore } from '@/stores/session';
 import { streamQuestion, getConfidence, streamColdStart, streamColdStartAnswer, streamSubmitAnswer, batchSubmitAnswer, endSession } from '@/api';
 import { toThinkingSteps, createDefaultConfidence, buildSessionResult } from '@/utils/session';
+import { selectVisibleThinkingSteps } from '@/utils/thinking';
 import type { ThinkingStep, ConfidenceStats } from '@/types';
 import MessageBubble from '@/components/MessageBubble.vue';
 import ThinkingSidebar from '@/components/ThinkingSidebar.vue';
@@ -163,8 +164,7 @@ const loadingText = computed(() => {
   return '正在生成下一轮题目...';
 });
 
-// Show only latest 2 thinking steps
-const visibleLiveThinking = computed(() => liveThinking.value.slice(-2));
+const visibleLiveThinking = computed(() => selectVisibleThinkingSteps(liveThinking.value));
 
 function scrollToBottom() {
   nextTick(() => {

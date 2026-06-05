@@ -1,6 +1,6 @@
 <template>
   <div v-if="steps.length" class="mt-2 space-y-1.5">
-    <!-- Show up to 2 most recent steps -->
+    <!-- 优先显示具体摘要，完成状态仍可在侧边栏查看。 -->
     <div
       v-for="(step, i) in visibleSteps"
       :key="i"
@@ -28,11 +28,12 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import type { ThinkingStep } from '@/types';
+import { selectVisibleThinkingSteps } from '@/utils/thinking';
 
 const props = defineProps<{ steps: ThinkingStep[] }>();
 const emit = defineEmits<{ open: [steps: ThinkingStep[]] }>();
 
-const visibleSteps = computed(() => props.steps.slice(-2));
+const visibleSteps = computed(() => selectVisibleThinkingSteps(props.steps));
 
 function openSidebar(step?: ThinkingStep) {
   emit('open', step ? [step] : props.steps);

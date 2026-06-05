@@ -44,7 +44,7 @@ describe('streamQuestion', () => {
     await streamQuestion('session-1', vi.fn(), undefined, 'request-1');
 
     expect(fetchMock).toHaveBeenCalledWith(
-      'http://localhost:8000/api/v1/sessions/session-1/question?request_id=request-1',
+      '/api/v1/sessions/session-1/question?request_id=request-1',
       { signal: undefined },
     );
   });
@@ -92,7 +92,7 @@ describe('batchSubmitAnswer', () => {
     );
 
     expect(fetchMock).toHaveBeenCalledWith(
-      'http://localhost:8000/api/v1/sessions/session-1/batch_answer',
+      '/api/v1/sessions/session-1/batch_answer',
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

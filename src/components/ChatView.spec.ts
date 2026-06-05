@@ -79,6 +79,61 @@ describe('ChatView 正式出题重试', () => {
   });
 });
 
+describe('ChatView 实时思考气泡', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    setActivePinia(createPinia());
+    Element.prototype.scrollTo = vi.fn();
+  });
+
+  it('正式出题过程中应优先显示具体题目摘要', async () => {
+    const pinia = createPinia();
+    setActivePinia(pinia);
+    const store = useSessionStore();
+    store.sessionId = 'session-1';
+    store.messages = [{
+      id: 'welcome',
+      role: 'system',
+      content: '开始评测',
+      timestamp: new Date().toISOString(),
+    }];
+
+    vi.mocked(streamQuestion).mockImplementation(async (_sessionId, onThinking) => {
+      onThinking({
+        agent: 'thinking_coordinator',
+        label: '出题规划摘要',
+        output: '系统正在选择适合当前水平的语法题。',
+      });
+      onThinking({
+        agent: 'system',
+        label: '题目摘要',
+        output: '本题围绕把字句的语序、结构和语义是否成立进行辨析。',
+      });
+      onThinking({
+        agent: 'item_qa_agent',
+        label: '质检智能体',
+        output: '[grammar] 题目质量检查完成。',
+      });
+      onThinking({
+        agent: 'grammar_generator',
+        label: 'grammar出题',
+        output: '[grammar] 题目生成完成。',
+      });
+
+      return new Promise(() => {});
+    });
+
+    const wrapper = mountChatView(pinia);
+    await flushPromises();
+
+    expect(wrapper.text()).toContain('本题围绕把字句');
+    expect(wrapper.text()).not.toContain('[grammar] 题目质量检查完成。');
+    expect(wrapper.text()).not.toContain('[grammar] 题目生成完成。');
+
+    wrapper.unmount();
+  });
+});
+
 describe('ChatView 批量提交幂等标识', () => {
   beforeEach(() => {
     vi.clearAllMocks();
