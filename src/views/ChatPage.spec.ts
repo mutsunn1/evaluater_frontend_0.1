@@ -36,12 +36,6 @@ function mountChatPage() {
   const session = useSessionStore();
   session.sessionId = 'session-1';
 
-  // jsdom defaults to 1024px; innerWidth doesn't affect Tailwind classes.
-  // The hamburger button uses md:hidden — md: breakpoint is 768px.
-  // Since jsdom viewport is 1024px, md:hidden hides it. We verify the
-  // button is in the DOM (just hidden by CSS), which is the correct
-  // behavior test — the entry point exists in the template.
-
   return mount(ChatPage, {
     global: {
       plugins: [pinia],
@@ -63,45 +57,58 @@ describe('ChatPage mobile profile entry', () => {
     expect(btn.attributes('aria-label')).toBe('打开用户资料');
   });
 
-  it('opens mobile profile drawer when hamburger is clicked', async () => {
+  it('opens mobile profile panel when hamburger is clicked', async () => {
     const wrapper = mountChatPage();
+    await flushPromises();
 
     const btn = wrapper.find('[data-testid="mobile-profile-btn"]');
     await btn.trigger('click');
     await flushPromises();
 
-    const drawer = wrapper.find('[data-testid="mobile-profile-drawer"]');
-    expect(drawer.exists()).toBe(true);
-    // Drawer should be visible (translate-x-0) when open
-    expect(drawer.classes()).toContain('translate-x-0');
+    // Panel should be expanded (max-h-80)
+    const panel = wrapper.find('[data-testid="mobile-profile-panel"]');
+    expect(panel.exists()).toBe(true);
+    expect(panel.classes()).toContain('max-h-80');
   });
 
-  it('closes mobile profile drawer when backdrop is clicked', async () => {
+  it('closes mobile profile panel when hamburger is clicked again', async () => {
+    const wrapper = mountChatPage();
+    await flushPromises();
+
+    const btn = wrapper.find('[data-testid="mobile-profile-btn"]');
+
+    // Open
+    await btn.trigger('click');
+    await flushPromises();
+    expect(wrapper.find('[data-testid="mobile-profile-panel"]').classes()).toContain('max-h-80');
+
+    // Close
+    await btn.trigger('click');
+    await flushPromises();
+    expect(wrapper.find('[data-testid="mobile-profile-panel"]').classes()).toContain('max-h-0');
+  });
+
+  it('panel starts collapsed', () => {
     const wrapper = mountChatPage();
 
-    // Open first
+    const panel = wrapper.find('[data-testid="mobile-profile-panel"]');
+    expect(panel.classes()).toContain('max-h-0');
+  });
+
+  it('shows profile data in mobile panel when opened', async () => {
+    const wrapper = mountChatPage();
+    await flushPromises();
+
     await wrapper.find('[data-testid="mobile-profile-btn"]').trigger('click');
     await flushPromises();
 
-    // Click backdrop
-    const backdrop = wrapper.find('[data-testid="mobile-profile-backdrop"]');
-    expect(backdrop.exists()).toBe(true);
-    await backdrop.trigger('click');
-    await flushPromises();
-
-    const drawer = wrapper.find('[data-testid="mobile-profile-drawer"]');
-    expect(drawer.classes()).toContain('-translate-x-full');
-  });
-
-  it('renders profile content inside mobile drawer when opened', async () => {
-    const wrapper = mountChatPage();
-
-    await wrapper.find('[data-testid="mobile-profile-btn"]').trigger('click');
-    await flushPromises();
-
-    const drawer = wrapper.find('[data-testid="mobile-profile-drawer"]');
-    // The drawer contains a UserProfileSidebar which shows profile data
-    expect(drawer.find('aside').exists()).toBe(true);
+    const panel = wrapper.find('[data-testid="mobile-profile-panel"]');
+    expect(panel.text()).toContain('HSK');
+    expect(panel.text()).toContain('综合');
+    expect(panel.text()).toContain('词汇');
+    expect(panel.text()).toContain('语法');
+    expect(panel.text()).toContain('阅读');
+    expect(panel.text()).toContain('词汇量');
   });
 
   it('shows top bar with title and user id', () => {
@@ -116,5 +123,17 @@ describe('ChatPage mobile profile entry', () => {
 
     expect(wrapper.text()).toContain('结束评测');
     expect(wrapper.text()).toContain('退出');
+  });
+
+  it('panel compresses chat area instead of overlaying', async () => {
+    const wrapper = mountChatPage();
+    await flushPromises();
+
+    // Panel is in normal document flow (between header and main),
+    // not a fixed-position overlay. Verify it's not fixed.
+    const panel = wrapper.find('[data-testid="mobile-profile-panel"]');
+    expect(panel.exists()).toBe(true);
+    // Should NOT be position fixed (unlike the old overlay drawer)
+    expect(panel.classes()).not.toContain('fixed');
   });
 });

@@ -1,18 +1,7 @@
 <template>
   <div class="flex h-dvh overflow-hidden">
-    <!-- Left sidebar: user profile -->
+    <!-- Left sidebar: user profile (desktop only) -->
     <UserProfileSidebar ref="profileSidebar" class="hidden md:flex" />
-
-    <div v-if="mobileProfileOpen" data-testid="mobile-profile-backdrop" class="fixed inset-0 z-40 bg-black/30 md:hidden" @click="mobileProfileOpen = false" />
-    <div
-      data-testid="mobile-profile-drawer"
-      :class="[
-        'fixed left-0 top-0 z-50 h-dvh transform transition-transform duration-300 md:hidden',
-        mobileProfileOpen ? 'translate-x-0' : '-translate-x-full',
-      ]"
-    >
-      <UserProfileSidebar ref="mobileProfileSidebar" />
-    </div>
 
     <!-- Right: main content -->
     <div class="flex min-w-0 flex-1 flex-col overflow-hidden">
@@ -23,7 +12,7 @@
             data-testid="mobile-profile-btn"
             class="flex h-9 w-9 items-center justify-center rounded-lg text-gray-600 hover:bg-gray-100 md:hidden"
             aria-label="打开用户资料"
-            @click="mobileProfileOpen = true"
+            @click="mobileProfileOpen = !mobileProfileOpen"
           >
             <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
@@ -43,6 +32,53 @@
         </div>
       </header>
 
+      <!-- Mobile profile panel: slides down below header, compresses chat area -->
+      <div
+        data-testid="mobile-profile-panel"
+        class="overflow-hidden transition-all duration-300 md:hidden"
+        :class="mobileProfileOpen ? 'max-h-80' : 'max-h-0'"
+      >
+        <div class="bg-gray-900 text-white">
+          <div v-if="fetchFailed" class="px-4 py-3 text-xs text-red-300">
+            无法加载用户资料，请检查后端连接是否正常。
+          </div>
+          <div class="space-y-2 px-4 py-3">
+            <!-- HSK Level -->
+            <div class="flex items-center gap-3">
+              <div class="text-xl font-bold text-blue-400">
+                {{ mobileProfile.hsk_level > 1 ? 'HSK ' + mobileProfile.hsk_level : '—' }}
+              </div>
+              <div class="text-xs text-gray-400">{{ mobileProfile.hsk_level > 1 ? '当前等级' : '等待评测' }}</div>
+            </div>
+
+            <!-- Skill bars: 2x2 grid -->
+            <div class="grid grid-cols-2 gap-x-4 gap-y-1.5">
+              <div v-for="skill in skills" :key="skill.key" class="space-y-0.5">
+                <div class="flex items-center justify-between text-xs">
+                  <span class="text-gray-400">{{ skill.label }}</span>
+                  <span class="font-mono text-gray-300">{{ mobileHasData ? (mobileProfile.skill_levels?.[skill.key] || 0) + '%' : '—' }}</span>
+                </div>
+                <div class="h-1.5 overflow-hidden rounded-full bg-gray-700">
+                  <div
+                    v-if="mobileHasData"
+                    class="h-full rounded-full transition-all duration-500"
+                    :class="skill.color"
+                    :style="{ width: (mobileProfile.skill_levels?.[skill.key] || 0) + '%' }"
+                  />
+                  <div v-else class="h-full rounded-full bg-gray-600" style="width: 0%" />
+                </div>
+              </div>
+            </div>
+
+            <!-- Strengths + focus -->
+            <div v-if="mobileProfile.strengths?.length || mobileProfile.next_focus?.length" class="flex flex-wrap gap-x-4 gap-y-0.5 text-xs">
+              <span v-if="mobileProfile.strengths?.length" class="text-green-300">已掌握: {{ mobileProfile.strengths.join('、') }}</span>
+              <span v-if="mobileProfile.next_focus?.length" class="text-yellow-300">建议关注: {{ mobileProfile.next_focus.join('、') }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- Main content -->
       <main class="flex-1 overflow-hidden">
         <ChatView v-if="!sessionStore.sessionResult" @profile-update="onProfileUpdate" />
@@ -53,22 +89,70 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useAuthStore } from '@/stores/auth';
 import { useSessionStore } from '@/stores/session';
 import { useRouter } from 'vue-router';
 import ChatView from '@/components/ChatView.vue';
 import SessionReport from '@/components/SessionReport.vue';
 import UserProfileSidebar from '@/components/UserProfileSidebar.vue';
-import { endSession, getConfidence } from '@/api';
+import { endSession, getConfidence, getUserProfile } from '@/api';
 import { buildSessionResult, createDefaultConfidence } from '@/utils/session';
+import type { UserProfileData } from '@/types';
 
 const auth = useAuthStore();
 const sessionStore = useSessionStore();
 const router = useRouter();
 const profileSidebar = ref<InstanceType<typeof UserProfileSidebar> | null>(null);
-const mobileProfileSidebar = ref<InstanceType<typeof UserProfileSidebar> | null>(null);
 const mobileProfileOpen = ref(false);
+
+// Mobile profile data (same API as desktop sidebar)
+const mobileProfile = ref<UserProfileData>({
+  user_id: '',
+  hsk_level: 1,
+  skill_levels: { hsk: 0, vocabulary: 0, grammar: 0, reading: 0 },
+  native_language: null,
+  stubborn_errors: [],
+  strengths: [],
+  next_focus: [],
+  updated_at: null,
+});
+
+const skills: { key: keyof NonNullable<UserProfileData['skill_levels']>; label: string; color: string }[] = [
+  { key: 'hsk', label: '综合', color: 'bg-blue-500' },
+  { key: 'vocabulary', label: '词汇', color: 'bg-purple-500' },
+  { key: 'grammar', label: '语法', color: 'bg-green-500' },
+  { key: 'reading', label: '阅读', color: 'bg-orange-500' },
+];
+
+const mobileHasData = computed(() => {
+  const sl = mobileProfile.value.skill_levels;
+  return sl && (sl.hsk > 0 || sl.vocabulary > 0 || sl.grammar > 0 || sl.reading > 0);
+});
+
+const fetchFailed = ref(false);
+
+async function fetchMobileProfile() {
+  if (!auth.userId) return;
+  try {
+    const data = await getUserProfile(auth.userId);
+    mobileProfile.value = data as UserProfileData;
+    fetchFailed.value = false;
+  } catch {
+    fetchFailed.value = true;
+  }
+}
+
+let profileInterval: ReturnType<typeof setInterval> | null = null;
+
+onMounted(() => {
+  fetchMobileProfile();
+  profileInterval = setInterval(fetchMobileProfile, 30000);
+});
+
+onUnmounted(() => {
+  if (profileInterval) clearInterval(profileInterval);
+});
 
 function handleLogout() {
   auth.logout();
@@ -92,6 +176,6 @@ async function handleEndSession() {
 
 function onProfileUpdate() {
   profileSidebar.value?.fetchProfile();
-  mobileProfileSidebar.value?.fetchProfile();
+  fetchMobileProfile();
 }
 </script>
