@@ -243,3 +243,93 @@ describe('ChatView 批量提交幂等标识', () => {
     }]);
   });
 });
+
+describe('ChatView mobile bottom input', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    Element.prototype.scrollTo = vi.fn();
+  });
+
+  it('renders input and send button when ready for user answer', async () => {
+    const pinia = createPinia();
+    setActivePinia(pinia);
+    const store = useSessionStore();
+    store.sessionId = 'session-1';
+    store.isColdStart = false;
+    store.isLoading = false;
+    store.isWaitingAnswer = false;
+    // Prevent auto-fetch watcher: messages.length > 1
+    store.messages = [
+      { id: 'welcome', role: 'system', content: '开始评测', timestamp: new Date().toISOString() },
+      { id: 'msg2', role: 'system', content: '已准备', timestamp: new Date().toISOString() },
+    ];
+
+    const wrapper = mountChatView(pinia);
+    await flushPromises();
+
+    const text = wrapper.text();
+    const input = wrapper.find('input');
+    expect(input.exists()).toBe(true);
+    expect(input.attributes('placeholder')).toBe('输入你的回答...');
+
+    // Send button should exist
+    expect(text).toContain('发送');
+  });
+
+  it('shows waiting message when isWaitingAnswer is true', async () => {
+    const pinia = createPinia();
+    setActivePinia(pinia);
+    const store = useSessionStore();
+    store.sessionId = 'session-1';
+    store.isColdStart = false;
+    store.isLoading = false;
+    store.isWaitingAnswer = true;
+    store.messages = [
+      { id: 'welcome', role: 'system', content: '开始评测', timestamp: new Date().toISOString() },
+      { id: 'msg2', role: 'system', content: '已准备', timestamp: new Date().toISOString() },
+    ];
+
+    const wrapper = mountChatView(pinia);
+    await flushPromises();
+
+    expect(wrapper.text()).toContain('请在上方题目中作答');
+  });
+
+  it('shows loading message when isLoading is true', async () => {
+    const pinia = createPinia();
+    setActivePinia(pinia);
+    const store = useSessionStore();
+    store.sessionId = 'session-1';
+    store.isColdStart = false;
+    store.isLoading = true;
+    store.messages = [
+      { id: 'welcome', role: 'system', content: '开始评测', timestamp: new Date().toISOString() },
+      { id: 'msg2', role: 'system', content: '已准备', timestamp: new Date().toISOString() },
+    ];
+
+    const wrapper = mountChatView(pinia);
+    await flushPromises();
+
+    expect(wrapper.text()).toContain('正在生成题目');
+  });
+
+  it('renders input for cold start questions', async () => {
+    const pinia = createPinia();
+    setActivePinia(pinia);
+    const store = useSessionStore();
+    store.sessionId = 'session-1';
+    store.isColdStart = true;
+    store.isLoading = false;
+    store.messages = [
+      { id: 'welcome', role: 'system', content: '开始评测', timestamp: new Date().toISOString() },
+      { id: 'msg2', role: 'system', content: '已准备', timestamp: new Date().toISOString() },
+    ];
+
+    const wrapper = mountChatView(pinia);
+    await flushPromises();
+
+    const input = wrapper.find('input');
+    expect(input.exists()).toBe(true);
+    expect(input.attributes('placeholder')).toBe('请简要回答...');
+  });
+});

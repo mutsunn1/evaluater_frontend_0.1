@@ -15,7 +15,7 @@
       </div>
 
       <!-- Per-dimension coverage -->
-      <div class="flex items-center gap-4 text-xs text-gray-500">
+      <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500 sm:gap-x-4">
         <div class="flex items-center gap-1">
           <span class="w-2 h-2 rounded-full bg-purple-500" />
           <span>词汇 {{ stats.dimension_rounds?.vocabulary || 0 }}轮</span>
@@ -28,7 +28,7 @@
           <span class="w-2 h-2 rounded-full bg-orange-500" />
           <span>阅读 {{ stats.dimension_rounds?.reading || 0 }}轮</span>
         </div>
-        <div class="ml-auto">
+        <div class="sm:ml-auto">
           <span>正确率 {{ stats.accuracy }}% · 置信度 {{ (stats.confidence * 100).toFixed(0) }}%</span>
         </div>
       </div>

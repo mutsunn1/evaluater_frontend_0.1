@@ -5,7 +5,7 @@
   <!-- Slide-in sidebar -->
   <div
     :class="[
-      'fixed right-0 top-0 z-50 h-full w-80 transform bg-white shadow-xl transition-transform duration-300 ease-in-out',
+      'fixed right-0 top-0 z-50 h-full w-full transform bg-white shadow-xl transition-transform duration-300 ease-in-out sm:w-80',
       isOpen ? 'translate-x-0' : 'translate-x-full',
     ]"
   >
@@ -21,7 +21,7 @@
       </div>
 
       <!-- Steps list -->
-      <div class="flex-1 overflow-y-auto p-4 space-y-4">
+      <div class="flex-1 space-y-4 overflow-y-auto p-3 sm:p-4">
         <div v-for="(step, i) in steps" :key="i" class="rounded-lg border border-gray-200 bg-gray-50 p-3">
           <div class="mb-2 flex items-center gap-2">
             <svg class="h-4 w-4 text-blue-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">

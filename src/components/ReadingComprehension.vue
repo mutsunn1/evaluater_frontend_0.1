@@ -3,7 +3,7 @@
     <!-- Reading passage -->
     <div class="mb-4 rounded-lg border border-gray-200 bg-gray-50 p-4">
       <div class="mb-2 text-xs font-semibold text-gray-500">阅读材料</div>
-      <p class="whitespace-pre-wrap text-base leading-relaxed text-gray-800">{{ data.reading_passage }}</p>
+      <p class="whitespace-pre-wrap break-words text-base leading-relaxed text-gray-800">{{ data.reading_passage }}</p>
     </div>
 
     <p class="mb-4 font-medium text-gray-800">{{ data.question_text }}</p>

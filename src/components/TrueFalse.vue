@@ -1,7 +1,7 @@
 <template>
   <div>
     <p class="mb-4 text-base font-medium text-gray-800">{{ data.question_text }}</p>
-    <div class="flex gap-3">
+    <div class="flex flex-col gap-3 sm:flex-row">
       <button
         :class="[
           'flex-1 rounded-lg border px-6 py-4 text-center font-medium transition-all',

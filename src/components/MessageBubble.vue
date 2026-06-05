@@ -1,8 +1,8 @@
 <template>
   <div :class="['flex', alignment]">
-    <div class="max-w-[80%]">
+    <div :class="containerClass">
       <!-- Main bubble -->
-      <div :class="['rounded-2xl px-4 py-3 text-sm', bubbleClass]">
+      <div :class="['rounded-2xl px-3 py-3 text-sm sm:px-4', bubbleClass]">
         <!-- Role badge -->
         <div v-if="roleLabel" class="mb-1 text-xs font-semibold" :class="badgeClass">{{ roleLabel }}</div>
 
@@ -10,7 +10,7 @@
         <template v-if="message.batch_questions && message.batch_questions.length">
           <div v-for="(q, qi) in message.batch_questions" :key="qi" class="mb-4 last:mb-0">
             <!-- Question meta: scene, grammar_focus, target_level -->
-            <div class="mb-2 flex items-center gap-2 text-xs text-gray-500">
+            <div class="mb-2 flex flex-wrap items-center gap-2 text-xs text-gray-500">
               <span class="rounded bg-blue-50 px-1.5 py-0.5 font-medium">{{ q.scene }}</span>
               <span v-if="q.grammar_focus">{{ q.grammar_focus }}</span>
               <span>{{ q.target_level }}</span>
@@ -22,7 +22,7 @@
                 v-for="opt in q.options"
                 :key="opt.index"
                 :class="[
-                  'flex w-full items-center rounded-lg border px-4 py-3 text-left transition-all',
+                  'flex min-h-12 w-full items-center rounded-lg border px-3 py-3 text-left transition-all sm:px-4',
                   batchAnswers[qi] === opt.index
                     ? 'border-blue-500 bg-blue-50 text-blue-700 ring-2 ring-blue-500/20'
                     : 'border-gray-200 bg-white text-gray-700 hover:border-blue-300 hover:bg-blue-50/50',
@@ -44,7 +44,7 @@
                 v-for="opt in q.options"
                 :key="opt.index"
                 :class="[
-                  'flex w-full items-center rounded-lg border px-4 py-3 text-left transition-all',
+                  'flex min-h-12 w-full items-center rounded-lg border px-3 py-3 text-left transition-all sm:px-4',
                   (selectedMulti[qi] || []).includes(opt.index)
                     ? 'border-blue-500 bg-blue-50 text-blue-700 ring-2 ring-blue-500/20'
                     : 'border-gray-200 bg-white text-gray-700 hover:border-blue-300 hover:bg-blue-50/50',
@@ -68,7 +68,7 @@
                 placeholder="输入你的答案"
               />
             </div>
-            <div v-else-if="q.question_type === 'true_false'" class="flex gap-3">
+            <div v-else-if="q.question_type === 'true_false'" class="flex flex-col gap-3 sm:flex-row">
               <p class="mb-2 w-full text-base font-medium text-gray-800">{{ q.question_text }}</p>
               <button
                 :class="[
@@ -168,6 +168,12 @@ const emit = defineEmits<{
 
 const alignment = computed(() =>
   props.message.role === 'user' ? 'justify-end' : 'justify-start'
+);
+
+const containerClass = computed(() =>
+  props.message.role === 'user'
+    ? 'max-w-[78%] sm:max-w-[80%]'
+    : 'w-full max-w-full sm:max-w-[80%]'
 );
 
 const bubbleClass = computed(() => {

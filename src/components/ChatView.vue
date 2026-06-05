@@ -1,5 +1,5 @@
 <template>
-  <div class="flex h-full flex-col">
+  <div class="flex h-full min-h-0 flex-col">
     <!-- Auto-stop alert -->
     <div v-if="autoStopAlert" class="mx-auto mt-2 max-w-2xl rounded-lg border border-green-300 bg-green-50 px-4 py-3 text-sm text-green-800">
       <div class="font-semibold">评测已自动结束</div>
@@ -7,7 +7,7 @@
       <div class="mt-1 text-xs text-green-600">准确率 {{ confidence.accuracy }}% · 置信度 {{ (confidence.confidence * 100).toFixed(0) }}%</div>
     </div>
 
-    <div ref="chatContainer" class="flex-1 overflow-y-auto px-4 py-6">
+    <div ref="chatContainer" class="flex-1 overflow-y-auto px-3 py-4 sm:px-4 sm:py-6">
       <div class="mx-auto max-w-2xl space-y-4">
         <MessageBubble
           v-for="msg in sessionStore.messages"
@@ -20,7 +20,7 @@
 
         <!-- Live thinking steps -->
         <div v-if="liveThinking.length > 0" class="flex justify-start">
-          <div class="max-w-[80%] space-y-1.5">
+          <div class="w-full max-w-full space-y-1.5 sm:max-w-[80%]">
             <div
               v-for="step in visibleLiveThinking"
               :key="step.output"
@@ -66,7 +66,7 @@
       </div>
     </div>
 
-    <div class="border-t border-gray-200 bg-white px-4 py-3">
+    <div class="border-t border-gray-200 bg-white px-3 py-3 sm:px-4">
       <div class="mx-auto max-w-2xl">
         <!-- Always show input during cold start -->
         <template v-if="isColdStart && !sessionStore.isLoading">
@@ -75,10 +75,10 @@
               v-model="userInput"
               type="text"
               placeholder="请简要回答..."
-              class="flex-1 rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+              class="min-w-0 flex-1 rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 sm:px-4"
               @keydown.enter="handleSend"
             />
-            <button class="btn-primary" :disabled="!userInput.trim()" @click="handleSend">
+            <button class="btn-primary shrink-0 px-3 sm:px-4" :disabled="!userInput.trim()" @click="handleSend">
               发送
             </button>
           </div>
@@ -90,10 +90,10 @@
               v-model="userInput"
               type="text"
               placeholder="输入你的回答..."
-              class="flex-1 rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+              class="min-w-0 flex-1 rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 sm:px-4"
               @keydown.enter="handleSend"
             />
-            <button class="btn-primary" :disabled="!userInput.trim()" @click="handleSend">
+            <button class="btn-primary shrink-0 px-3 sm:px-4" :disabled="!userInput.trim()" @click="handleSend">
               发送
             </button>
           </div>
