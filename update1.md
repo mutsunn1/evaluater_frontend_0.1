@@ -257,3 +257,37 @@
 
 - `question_pushed_at`: 题目推送时间戳
 - `last_response_time`: 答题用时（毫秒）
+
+---
+
+## 第九轮更新 -- 2026-06-05
+
+### 前端移动端兼容与部署说明
+
+#### 27. API 默认地址改为同源路径
+
+**修改文件**: `src/api/index.ts`、`.env`、`.env.example`
+
+- `VITE_API_URL` 默认不再指向 `http://localhost:8000`
+- 前端默认请求 `/api/v1/...`
+- **原因**: 移动端浏览器中的 `localhost` 指向手机本机，不是后端所在机器
+- **影响**: 生产环境可统一通过公网域名反向代理 `/api` 到后端，避免 PC 正常但移动端 `Failed to fetch`
+
+#### 28. 客户端 ID 生成改用 `uuid`
+
+**新增文件**: `src/utils/id.ts`
+
+- 新增 `createClientId()` 作为前端客户端 ID 的统一生成入口
+- 引入生产依赖 `uuid`
+- 替换组件中的 `crypto.randomUUID()`
+- **原因**: 部分移动端或旧浏览器环境没有 `crypto.randomUUID`，会报 `crypto.randomUUID is not a function`
+- **影响**: 消息 `id`、正式出题 `question_request_id`、批量提交 `submission_id` 在移动端环境中稳定生成
+
+#### 29. 前端运行文档
+
+**新增文件**: `README.md`
+
+- 记录本地启动、测试、构建命令
+- 说明同源 API 路径与反向代理约定
+- 说明 `uuid` 依赖和 `createClientId()` 使用边界
+- 补充多工作区同步注意事项：复制到新工作区后需要同步 `package.json` / `package-lock.json` 并重新执行 `npm install`

@@ -1,4 +1,33 @@
-export type QuestionType = 'multiple_choice' | 'multiple_select' | 'true_false' | 'fill_in_blank' | 'reading_comprehension' | 'unknown';
+export type QuestionType =
+  | "multiple_choice"
+  | "multiple_select"
+  | "true_false"
+  | "fill_in_blank"
+  | "reading_comprehension"
+  | "unknown";
+
+export type ResponseMode =
+  | "choice"
+  | "text"
+  | "speech"
+  | "handwriting"
+  | "upload";
+
+export interface MediaAsset {
+  id: string;
+  type: "image" | "audio" | "video";
+  role: "prompt" | "option" | "reference";
+  source: "prepared" | "generated";
+  url: string;
+  mime_type?: string;
+  alt?: string;
+}
+
+export interface QuestionOption {
+  index: string;
+  text?: string;
+  media_id?: string;
+}
 
 export interface SubQuestion {
   sub_id: string;
@@ -12,21 +41,23 @@ export interface ItemData {
   grammar_focus: string;
   target_level: string;
   question_text: string;
-  options?: { index: string; text: string }[];
+  options?: QuestionOption[];
   correct_answer?: string | string[] | boolean;
   reading_passage?: string;
   sub_questions?: SubQuestion[];
   blank_count?: number;
   expected_duration_seconds?: number;
-  skill_dimension?: 'vocabulary' | 'grammar' | 'reading';
+  skill_dimension?: "vocabulary" | "grammar" | "reading";
   batch_id?: string;
   batch_index?: number;
   batch_total?: number;
+  response_mode?: ResponseMode;
+  media?: MediaAsset[];
 }
 
 export interface ChatMessage {
   id: string;
-  role: 'system' | 'user' | 'question' | 'feedback' | 'cold_start';
+  role: "system" | "user" | "question" | "feedback" | "cold_start";
   content: string;
   item_data?: ItemData;
   batch_questions?: ItemData[];
@@ -59,7 +90,12 @@ export interface ConfidenceStats {
 export interface UserProfileData {
   user_id: string;
   hsk_level: number;
-  skill_levels: { hsk: number; vocabulary: number; grammar: number; reading: number };
+  skill_levels: {
+    hsk: number;
+    vocabulary: number;
+    grammar: number;
+    reading: number;
+  };
   native_language: string | null;
   stubborn_errors: string[];
   strengths: string[];
