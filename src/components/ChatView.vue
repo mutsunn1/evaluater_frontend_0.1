@@ -1,13 +1,22 @@
 <template>
   <div class="flex h-full min-h-0 flex-col">
     <!-- Auto-stop alert -->
-    <div v-if="autoStopAlert" class="mx-auto mt-2 max-w-2xl rounded-lg border border-green-300 bg-green-50 px-4 py-3 text-sm text-green-800">
+    <div
+      v-if="autoStopAlert"
+      class="mx-auto mt-2 max-w-2xl rounded-lg border border-green-300 bg-green-50 px-4 py-3 text-sm text-green-800"
+    >
       <div class="font-semibold">评测已自动结束</div>
       <div>{{ autoStopAlert }}</div>
-      <div class="mt-1 text-xs text-green-600">准确率 {{ confidence.accuracy }}% · 置信度 {{ (confidence.confidence * 100).toFixed(0) }}%</div>
+      <div class="mt-1 text-xs text-green-600">
+        准确率 {{ confidence.accuracy }}% · 置信度
+        {{ (confidence.confidence * 100).toFixed(0) }}%
+      </div>
     </div>
 
-    <div ref="chatContainer" class="flex-1 overflow-y-auto px-3 py-4 sm:px-4 sm:py-6">
+    <div
+      ref="chatContainer"
+      class="flex-1 overflow-y-auto px-3 py-4 sm:px-4 sm:py-6"
+    >
       <div class="mx-auto max-w-2xl space-y-4">
         <MessageBubble
           v-for="msg in sessionStore.messages"
@@ -27,10 +36,18 @@
               class="flex cursor-pointer items-center gap-1.5 rounded-md bg-gray-100 px-2.5 py-1.5 text-xs text-gray-500 hover:bg-gray-200"
               @click="openSidebarFromLive()"
             >
-              <svg class="h-3.5 w-3.5 flex-shrink-0 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M12 2a10 10 0 0 1 10 10"/>
+              <svg
+                class="h-3.5 w-3.5 flex-shrink-0 animate-spin"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <path d="M12 2a10 10 0 0 1 10 10" />
               </svg>
-              <span class="font-medium text-gray-600">{{ step.label || step.agent }}</span>
+              <span class="font-medium text-gray-600">{{
+                step.label || step.agent
+              }}</span>
               <span class="truncate">{{ step.output.slice(0, 80) }}...</span>
             </div>
             <button
@@ -51,7 +68,9 @@
         </div>
 
         <div v-if="sessionStore.error" class="flex justify-center">
-          <div class="flex items-center gap-3 rounded-lg bg-red-50 px-4 py-2 text-sm text-red-600">
+          <div
+            class="flex items-center gap-3 rounded-lg bg-red-50 px-4 py-2 text-sm text-red-600"
+          >
             <span>{{ sessionStore.error }}</span>
             <button
               v-if="questionRetryRequestId"
@@ -78,14 +97,21 @@
               class="min-w-0 flex-1 rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 sm:px-4"
               @keydown.enter="handleSend"
             />
-            <button class="btn-primary shrink-0 px-3 sm:px-4" :disabled="!userInput.trim()" @click="handleSend">
+            <button
+              class="btn-primary shrink-0 px-3 sm:px-4"
+              :disabled="!userInput.trim()"
+              @click="handleSend"
+            >
               发送
             </button>
           </div>
         </template>
         <!-- Normal evaluation input -->
         <template v-else-if="!isColdStart">
-          <div v-if="!sessionStore.isWaitingAnswer && !sessionStore.isLoading" class="flex gap-2">
+          <div
+            v-if="!sessionStore.isWaitingAnswer && !sessionStore.isLoading"
+            class="flex gap-2"
+          >
             <input
               v-model="userInput"
               type="text"
@@ -93,11 +119,18 @@
               class="min-w-0 flex-1 rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 sm:px-4"
               @keydown.enter="handleSend"
             />
-            <button class="btn-primary shrink-0 px-3 sm:px-4" :disabled="!userInput.trim()" @click="handleSend">
+            <button
+              class="btn-primary shrink-0 px-3 sm:px-4"
+              :disabled="!userInput.trim()"
+              @click="handleSend"
+            >
               发送
             </button>
           </div>
-          <div v-else-if="sessionStore.isWaitingAnswer" class="text-center text-sm text-gray-500">
+          <div
+            v-else-if="sessionStore.isWaitingAnswer"
+            class="text-center text-sm text-gray-500"
+          >
             请在上方题目中作答
           </div>
           <div v-else class="text-center text-sm text-gray-500">
@@ -116,25 +149,41 @@
   </div>
 
   <!-- Thinking sidebar -->
-  <ThinkingSidebar :steps="sidebarSteps" :is-open="sidebarOpen" @close="closeSidebar" />
+  <ThinkingSidebar
+    :steps="sidebarSteps"
+    :is-open="sidebarOpen"
+    @close="closeSidebar"
+  />
 </template>
 
 <script setup lang="ts">
-import { ref, watch, computed, nextTick, onUnmounted } from 'vue';
-import { useSessionStore } from '@/stores/session';
-import { streamQuestion, getConfidence, streamColdStart, streamColdStartAnswer, streamSubmitAnswer, batchSubmitAnswer, endSession } from '@/api';
-import { toThinkingSteps, createDefaultConfidence, buildSessionResult } from '@/utils/session';
-import { selectVisibleThinkingSteps } from '@/utils/thinking';
-import { createClientId } from '@/utils/id';
-import type { ThinkingStep, ConfidenceStats } from '@/types';
-import MessageBubble from '@/components/MessageBubble.vue';
-import ThinkingSidebar from '@/components/ThinkingSidebar.vue';
-import ConfidenceBar from '@/components/ConfidenceBar.vue';
+import { ref, watch, computed, nextTick, onUnmounted } from "vue";
+import { useSessionStore } from "@/stores/session";
+import {
+  streamQuestion,
+  getConfidence,
+  streamColdStart,
+  streamColdStartAnswer,
+  streamSubmitAnswer,
+  batchSubmitAnswer,
+  endSession,
+} from "@/api";
+import {
+  toThinkingSteps,
+  createDefaultConfidence,
+  buildSessionResult,
+} from "@/utils/session";
+import { selectVisibleThinkingSteps } from "@/utils/thinking";
+import { createClientId } from "@/utils/id";
+import type { ThinkingStep, ConfidenceStats } from "@/types";
+import MessageBubble from "@/components/MessageBubble.vue";
+import ThinkingSidebar from "@/components/ThinkingSidebar.vue";
+import ConfidenceBar from "@/components/ConfidenceBar.vue";
 
 const sessionStore = useSessionStore();
 const emit = defineEmits<{ profileUpdate: [] }>();
 const chatContainer = ref<HTMLElement | null>(null);
-const userInput = ref('');
+const userInput = ref("");
 const sidebarOpen = ref(false);
 const sidebarSteps = ref<ThinkingStep[]>([]);
 
@@ -151,21 +200,28 @@ onUnmounted(() => {
   abortController?.abort();
 });
 
-const liveThinking = ref<{ agent: string; label: string; output: string }[]>([]);
+const liveThinking = ref<{ agent: string; label: string; output: string }[]>(
+  []
+);
 const confidence = ref<ConfidenceStats>(createDefaultConfidence());
-const autoStopAlert = ref('');
+const autoStopAlert = ref("");
 
 // Cold start state (synced from store)
 const isColdStart = computed(() => sessionStore.isColdStart);
 const coldStartRound = ref(0);
 
 const loadingText = computed(() => {
-  if (isColdStart.value) return coldStartRound.value > 0 ? '正在分析你的回答...' : '正在准备冷启动问题...';
-  if (sessionStore.loadingPhase === 'judging') return '正在评估作答...';
-  return '正在生成下一轮题目...';
+  if (isColdStart.value)
+    return coldStartRound.value > 0
+      ? "正在分析你的回答..."
+      : "正在准备冷启动问题...";
+  if (sessionStore.loadingPhase === "judging") return "正在评估作答...";
+  return "正在生成下一轮题目...";
 });
 
-const visibleLiveThinking = computed(() => selectVisibleThinkingSteps(liveThinking.value));
+const visibleLiveThinking = computed(() =>
+  selectVisibleThinkingSteps(liveThinking.value)
+);
 
 function scrollToBottom() {
   nextTick(() => {
@@ -180,7 +236,7 @@ function scrollToLatest() {
   nextTick(() => {
     if (!chatContainer.value) return;
     const container = chatContainer.value;
-    const inner = container.querySelector('.mx-auto');
+    const inner = container.querySelector(".mx-auto");
     if (!inner) return;
     const messages = Array.from(inner.children);
     if (messages.length === 0) return;
@@ -190,7 +246,7 @@ function scrollToLatest() {
     const msgRect = lastMsg.getBoundingClientRect();
     container.scrollTo({
       top: container.scrollTop + (msgRect.top - containerRect.top),
-      behavior: 'smooth',
+      behavior: "smooth",
     });
   });
 }
@@ -213,32 +269,42 @@ async function fetchColdStartRound() {
   liveThinking.value = [];
 
   try {
-    const resp = await streamColdStart(sessionStore.sessionId, (step) => {
-      liveThinking.value.push(step);
-      scrollToBottom();
-    }, getSignal());
+    const resp = await streamColdStart(
+      sessionStore.sessionId,
+      (step) => {
+        liveThinking.value.push(step);
+        scrollToBottom();
+      },
+      getSignal()
+    );
 
-    if ('cold_start_complete' in resp && resp.cold_start_complete) {
+    if ("cold_start_complete" in resp && resp.cold_start_complete) {
       // Cold start done → transition to normal evaluation
       sessionStore.isColdStart = false;
       sessionStore.addMessage({
         id: createClientId(),
-        role: 'system',
-        content: '冷启动评测完成。根据你的表现，系统已初步了解你的中文水平。接下来进入正式评测。',
+        role: "system",
+        content:
+          "冷启动评测完成。根据你的表现，系统已初步了解你的中文水平。接下来进入正式评测。",
         timestamp: new Date().toISOString(),
       });
       scrollToBottom();
-      emit('profileUpdate');
+      emit("profileUpdate");
       await fetchNextQuestion();
       return;
     }
 
-    const q = resp as { cold_start: boolean; round: number; label: string; question: string };
+    const q = resp as {
+      cold_start: boolean;
+      round: number;
+      label: string;
+      question: string;
+    };
     coldStartRound.value = q.round;
 
     sessionStore.addMessage({
       id: createClientId(),
-      role: 'cold_start',
+      role: "cold_start",
       content: q.question,
       cold_start_data: { round: q.round, label: q.label },
       timestamp: new Date().toISOString(),
@@ -249,7 +315,7 @@ async function fetchColdStartRound() {
     liveThinking.value = [];
     scrollToLatest();
   } catch (e) {
-    sessionStore.error = e instanceof Error ? e.message : '冷启动问题获取失败';
+    sessionStore.error = e instanceof Error ? e.message : "冷启动问题获取失败";
     liveThinking.value = [];
   } finally {
     sessionStore.isLoading = false;
@@ -261,7 +327,7 @@ async function handleColdStartAnswer(answer: string) {
 
   sessionStore.addMessage({
     id: createClientId(),
-    role: 'user',
+    role: "user",
     content: answer,
     timestamp: new Date().toISOString(),
   });
@@ -274,15 +340,21 @@ async function handleColdStartAnswer(answer: string) {
   liveThinking.value = [];
 
   try {
-    const resp = await streamColdStartAnswer(sessionStore.sessionId, answer, responseTime, (step) => {
-      liveThinking.value.push(step);
-      scrollToBottom();
-    }, getSignal());
+    const resp = await streamColdStartAnswer(
+      sessionStore.sessionId,
+      answer,
+      responseTime,
+      (step) => {
+        liveThinking.value.push(step);
+        scrollToBottom();
+      },
+      getSignal()
+    );
 
     sessionStore.addMessage({
       id: createClientId(),
-      role: 'feedback',
-      content: resp.feedback || '作答已记录。',
+      role: "feedback",
+      content: resp.feedback || "作答已记录。",
       timestamp: new Date().toISOString(),
       thinking_steps: toThinkingSteps(liveThinking.value),
     });
@@ -292,12 +364,14 @@ async function handleColdStartAnswer(answer: string) {
       sessionStore.isColdStart = false;
       sessionStore.addMessage({
         id: createClientId(),
-        role: 'system',
-        content: (resp as Record<string, unknown>).message as string || '冷启动评测完成，即将进入正式评测。',
+        role: "system",
+        content:
+          ((resp as Record<string, unknown>).message as string) ||
+          "冷启动评测完成，即将进入正式评测。",
         timestamp: new Date().toISOString(),
       });
       scrollToBottom();
-      emit('profileUpdate');
+      emit("profileUpdate");
       setTimeout(() => fetchNextQuestion(), 2000);
     } else {
       // Next cold start round
@@ -306,7 +380,7 @@ async function handleColdStartAnswer(answer: string) {
 
     liveThinking.value = [];
   } catch (e) {
-    sessionStore.error = e instanceof Error ? e.message : '冷启动答案提交失败';
+    sessionStore.error = e instanceof Error ? e.message : "冷启动答案提交失败";
     liveThinking.value = [];
   } finally {
     sessionStore.isLoading = false;
@@ -326,7 +400,7 @@ async function handleAnswer(answer: string) {
 
   sessionStore.addMessage({
     id: createClientId(),
-    role: 'user',
+    role: "user",
     content: answer,
     timestamp: new Date().toISOString(),
   });
@@ -335,22 +409,33 @@ async function handleAnswer(answer: string) {
   try {
     sessionStore.isWaitingAnswer = false;
     sessionStore.isLoading = true;
-    sessionStore.loadingPhase = 'judging';
+    sessionStore.loadingPhase = "judging";
     sessionStore.error = null;
     liveThinking.value = [];
 
-    const resp = await streamSubmitAnswer(sessionStore.sessionId, answer, (step) => {
-      liveThinking.value.push(step);
-      scrollToBottom();
-    }, getSignal());
+    const resp = await streamSubmitAnswer(
+      sessionStore.sessionId,
+      answer,
+      (step) => {
+        liveThinking.value.push(step);
+        scrollToBottom();
+      },
+      getSignal()
+    );
 
-    const feedback = (resp.feedback as string) || '';
+    const feedback = (resp.feedback as string) || "";
     const isCorrect = resp.is_correct as boolean | undefined;
 
     sessionStore.addMessage({
       id: createClientId(),
-      role: 'feedback',
-      content: feedback || (isCorrect !== undefined ? (isCorrect ? '回答正确！' : '回答不正确。') : '回答已记录。'),
+      role: "feedback",
+      content:
+        feedback ||
+        (isCorrect !== undefined
+          ? isCorrect
+            ? "回答正确！"
+            : "回答不正确。"
+          : "回答已记录。"),
       timestamp: new Date().toISOString(),
       thinking_steps: toThinkingSteps(liveThinking.value),
     });
@@ -361,14 +446,14 @@ async function handleAnswer(answer: string) {
     confidence.value.should_stop = resp.auto_stop as boolean;
 
     await updateConfidence();
-    emit('profileUpdate');
+    emit("profileUpdate");
     if (!confidence.value.should_stop) {
       await fetchNextQuestion();
     }
 
     liveThinking.value = [];
   } catch (e) {
-    sessionStore.error = e instanceof Error ? e.message : '提交答案失败';
+    sessionStore.error = e instanceof Error ? e.message : "提交答案失败";
     liveThinking.value = [];
   } finally {
     sessionStore.isLoading = false;
@@ -378,7 +463,7 @@ async function handleAnswer(answer: string) {
 async function handleSend() {
   const text = userInput.value.trim();
   if (!text || sessionStore.isLoading) return;
-  userInput.value = '';
+  userInput.value = "";
   await handleAnswer(text);
 }
 
@@ -387,7 +472,7 @@ async function fetchNextQuestion(requestId?: string) {
   const questionRequestId = requestId || createClientId();
   activeQuestionRequestId.value = questionRequestId;
   sessionStore.isLoading = true;
-  sessionStore.loadingPhase = 'generating';
+  sessionStore.loadingPhase = "generating";
   sessionStore.error = null;
   questionRetryRequestId.value = null;
   liveThinking.value = [];
@@ -395,22 +480,27 @@ async function fetchNextQuestion(requestId?: string) {
   try {
     const thinkingSteps: ThinkingStep[] = [];
 
-    const resp = await streamQuestion(sessionStore.sessionId, (step) => {
-      liveThinking.value.push(step);
-      thinkingSteps.push({
-        agent: step.label || step.agent,
-        agent_key: step.agent,
-        output: step.output,
-      });
-    }, getSignal(), questionRequestId);
+    const resp = await streamQuestion(
+      sessionStore.sessionId,
+      (step) => {
+        liveThinking.value.push(step);
+        thinkingSteps.push({
+          agent: step.label || step.agent,
+          agent_key: step.agent,
+          output: step.output,
+        });
+      },
+      getSignal(),
+      questionRequestId
+    );
 
     const questions = resp.questions;
 
     if (questions.length > 0) {
       sessionStore.addMessage({
         id: createClientId(),
-        role: 'question',
-        content: '',
+        role: "question",
+        content: "",
         batch_questions: questions,
         timestamp: new Date().toISOString(),
         thinking_steps: thinkingSteps.length > 0 ? thinkingSteps : undefined,
@@ -422,8 +512,8 @@ async function fetchNextQuestion(requestId?: string) {
     } else {
       sessionStore.addMessage({
         id: createClientId(),
-        role: 'question',
-        content: '题目生成异常',
+        role: "question",
+        content: "题目生成异常",
         timestamp: new Date().toISOString(),
       });
       sessionStore.isWaitingAnswer = false;
@@ -434,7 +524,7 @@ async function fetchNextQuestion(requestId?: string) {
     questionRetryRequestId.value = null;
     liveThinking.value = [];
   } catch (e) {
-    sessionStore.error = e instanceof Error ? e.message : '获取题目失败';
+    sessionStore.error = e instanceof Error ? e.message : "获取题目失败";
     questionRetryRequestId.value = questionRequestId;
     liveThinking.value = [];
   } finally {
@@ -448,15 +538,33 @@ async function retryQuestion() {
 }
 
 /** Handle batch submit: all questions in the current batch */
-async function handleBatchSubmit(answers: Array<{ question_index: number; answer: string }>) {
+async function handleBatchSubmit(
+  answers: Array<{
+    question_index: number;
+    answer: string;
+    response_mode?: string;
+  }>
+) {
   if (!sessionStore.sessionId) return;
   const submissionId = createClientId();
 
   // Add user answers as a single message
-  const answerSummary = answers.map(a => `第${a.question_index + 1}题: ${a.answer}`).join('\n');
+  const answerSummary = answers
+    .map((a) => {
+      const label = (a as any).response_mode
+        ? {
+            speech: "语音作答:（已提交）",
+            handwriting: "手写作答:（已提交）",
+            upload: "上传作答:（已提交）",
+          }[(a as any).response_mode] ||
+          `第${a.question_index + 1}题（${(a as any).response_mode}）: ${a.answer}`
+        : `第${a.question_index + 1}题: ${a.answer}`;
+      return a.answer ? `第${a.question_index + 1}题: ${a.answer}` : label;
+    })
+    .join("\n");
   sessionStore.addMessage({
     id: createClientId(),
-    role: 'user',
+    role: "user",
     content: answerSummary,
     timestamp: new Date().toISOString(),
   });
@@ -465,31 +573,41 @@ async function handleBatchSubmit(answers: Array<{ question_index: number; answer
   try {
     sessionStore.isWaitingAnswer = false;
     sessionStore.isLoading = true;
-    sessionStore.loadingPhase = 'judging';
+    sessionStore.loadingPhase = "judging";
     sessionStore.error = null;
     liveThinking.value = [];
 
-    const resp = await batchSubmitAnswer(sessionStore.sessionId, answers, (step) => {
-      liveThinking.value.push(step);
-      scrollToBottom();
-    }, getSignal(), submissionId);
+    const resp = await batchSubmitAnswer(
+      sessionStore.sessionId,
+      answers,
+      (step) => {
+        liveThinking.value.push(step);
+        scrollToBottom();
+      },
+      getSignal(),
+      submissionId
+    );
     const results = resp.results as Array<Record<string, unknown>>;
     const thinkingSteps = toThinkingSteps(liveThinking.value);
 
     // Show feedback for each question
     for (let i = 0; i < results.length; i++) {
       const r = results[i];
-      const feedback = (r.feedback as string) || '';
+      const feedback = (r.feedback as string) || "";
       const isCorrect = r.is_correct as boolean | undefined;
-      const dim = answers[i] ? sessionStore.currentQuestions[answers[i].question_index]?.skill_dimension : '';
-      const dimText = dim ? `[${dim}] ` : '';
+      const dim = answers[i]
+        ? sessionStore.currentQuestions[answers[i].question_index]
+            ?.skill_dimension
+        : "";
+      const dimText = dim ? `[${dim}] ` : "";
 
       sessionStore.addMessage({
         id: createClientId(),
-        role: 'feedback',
-        content: `${dimText}第${answers[i]?.question_index + 1}题: ${feedback || (isCorrect !== undefined ? (isCorrect ? '回答正确！' : '回答不正确。') : '回答已记录。')}`,
+        role: "feedback",
+        content: `${dimText}第${answers[i]?.question_index + 1}题: ${feedback || (isCorrect !== undefined ? (isCorrect ? "回答正确！" : "回答不正确。") : "回答已记录。")}`,
         timestamp: new Date().toISOString(),
-        thinking_steps: i === 0 && thinkingSteps.length > 0 ? thinkingSteps : undefined,
+        thinking_steps:
+          i === 0 && thinkingSteps.length > 0 ? thinkingSteps : undefined,
       });
     }
     scrollToBottom();
@@ -499,14 +617,14 @@ async function handleBatchSubmit(answers: Array<{ question_index: number; answer
     confidence.value.should_stop = resp.auto_stop as boolean;
 
     await updateConfidence();
-    emit('profileUpdate');
+    emit("profileUpdate");
     liveThinking.value = [];
 
     if (!confidence.value.should_stop) {
       await fetchNextQuestion();
     }
   } catch (e) {
-    sessionStore.error = e instanceof Error ? e.message : '提交答案失败';
+    sessionStore.error = e instanceof Error ? e.message : "提交答案失败";
     liveThinking.value = [];
   } finally {
     sessionStore.isLoading = false;
@@ -523,14 +641,24 @@ async function updateConfidence() {
       setTimeout(async () => {
         try {
           const endResp = await endSession(sessionStore.sessionId!);
-          const summary = endResp.summary as Record<string, unknown> | undefined;
-          sessionStore.sessionResult = buildSessionResult(summary, confidence.value);
+          const summary = endResp.summary as
+            | Record<string, unknown>
+            | undefined;
+          sessionStore.sessionResult = buildSessionResult(
+            summary,
+            confidence.value
+          );
         } catch {
-          sessionStore.sessionResult = buildSessionResult(undefined, confidence.value);
+          sessionStore.sessionResult = buildSessionResult(
+            undefined,
+            confidence.value
+          );
         }
       }, 3000);
     }
-  } catch (e) { console.error('Confidence update failed:', e); }
+  } catch (e) {
+    console.error("Confidence update failed:", e);
+  }
 }
 
 function onOpenThinking(steps: ThinkingStep[]) {
@@ -549,13 +677,17 @@ function closeSidebar() {
 }
 
 // Auto-start: check if cold start is needed
-watch(() => sessionStore.sessionId, (id) => {
-  if (id && sessionStore.messages.length <= 1) {
-    if (isColdStart.value) {
-      startColdStart();
-    } else {
-      fetchNextQuestion();
+watch(
+  () => sessionStore.sessionId,
+  (id) => {
+    if (id && sessionStore.messages.length <= 1) {
+      if (isColdStart.value) {
+        startColdStart();
+      } else {
+        fetchNextQuestion();
+      }
     }
-  }
-}, { immediate: true });
+  },
+  { immediate: true }
+);
 </script>

@@ -47,18 +47,18 @@
               />
             </template>
             <!-- Response mode placeholders (speech/handwriting/upload) -->
-            <SpeechResponsePlaceholder v-if="q.response_mode === 'speech'" />
+            <SpeechResponsePlaceholder
+              v-if="resolveResponseMode(q) === 'speech'"
+            />
             <HandwritingResponsePlaceholder
-              v-else-if="q.response_mode === 'handwriting'"
+              v-else-if="resolveResponseMode(q) === 'handwriting'"
             />
             <UploadResponsePlaceholder
-              v-else-if="q.response_mode === 'upload'"
+              v-else-if="resolveResponseMode(q) === 'upload'"
             />
-            <!-- Standard text answer (fill_in_blank etc with response_mode === 'text' or undefined) -->
+            <!-- Standard text answer (fill_in_blank etc) -->
             <div
-              v-else-if="
-                q.response_mode === undefined || q.response_mode === 'text'
-              "
+              v-else-if="resolveResponseMode(q) === 'text'"
               class="space-y-3"
             >
               <p
@@ -88,11 +88,7 @@
               />
             </div>
             <!-- Choice dispatch -->
-            <template
-              v-else-if="
-                q.response_mode === undefined || q.response_mode === 'choice'
-              "
-            >
+            <template v-else-if="resolveResponseMode(q) === 'choice'">
               <!-- Single choice -->
               <div
                 v-if="
@@ -126,7 +122,11 @@
                   >
                     {{ batchAnswers[qi] === opt.index ? "✓" : opt.index }}
                   </span>
-                  {{ opt.text }}
+                  <MediaOptionAsset
+                    v-if="opt.media_id"
+                    :asset="findMediaById(q.media, opt.media_id)!"
+                  />
+                  <span v-if="opt.text">{{ opt.text }}</span>
                 </button>
               </div>
               <!-- Multiple choice (multiple select) -->
@@ -169,7 +169,11 @@
                         : opt.index
                     }}
                   </span>
-                  {{ opt.text }}
+                  <MediaOptionAsset
+                    v-if="opt.media_id"
+                    :asset="findMediaById(q.media, opt.media_id)!"
+                  />
+                  <span v-if="opt.text">{{ opt.text }}</span>
                 </button>
               </div>
               <!-- Fallback: choice without options → text input -->
@@ -305,6 +309,7 @@ import type { ChatMessage, ThinkingStep, MediaAsset } from "@/types";
 import QuestionRenderer from "@/components/QuestionRenderer.vue";
 import ThinkingProcess from "@/components/ThinkingProcess.vue";
 import MediaPromptBlock from "@/components/MediaPromptBlock.vue";
+import MediaOptionAsset from "@/components/MediaOptionAsset.vue";
 import SpeechResponsePlaceholder from "@/components/SpeechResponsePlaceholder.vue";
 import HandwritingResponsePlaceholder from "@/components/HandwritingResponsePlaceholder.vue";
 import UploadResponsePlaceholder from "@/components/UploadResponsePlaceholder.vue";
@@ -393,6 +398,22 @@ const timeClass = computed(() =>
   props.message.role === "user" ? "text-blue-200 text-right" : "text-gray-400"
 );
 
+// response_mode 解析：显式值优先；缺失时根据 question_type 推断
+function resolveResponseMode(q: {
+  response_mode?: string;
+  question_type: string;
+}): string {
+  if (q.response_mode) return q.response_mode;
+  if (
+    q.question_type === "multiple_choice" ||
+    q.question_type === "multiple_select" ||
+    q.question_type === "true_false"
+  ) {
+    return "choice";
+  }
+  return "text";
+}
+
 // Batch answer state
 const batchAnswers = ref<Record<number, string>>({});
 const batchFillAnswers = ref<Record<number, string>>({});
@@ -422,12 +443,9 @@ function toggleMultiSelect(qi: number, index: string) {
 const canBatchSubmit = computed(() => {
   const questions = props.message.batch_questions || [];
   return questions.every((q, qi) => {
+    const mode = resolveResponseMode(q);
     // speech/handwriting/upload 模式的题目不需要用户交互即可提交
-    if (
-      q.response_mode === "speech" ||
-      q.response_mode === "handwriting" ||
-      q.response_mode === "upload"
-    ) {
+    if (mode === "speech" || mode === "handwriting" || mode === "upload") {
       return true;
     }
     return (
@@ -449,12 +467,9 @@ function submitBatch() {
   const questions = props.message.batch_questions || [];
   const answers = questions.map((q, qi) => {
     const base: Record<string, unknown> = { question_index: qi };
-    if (
-      q.response_mode === "speech" ||
-      q.response_mode === "handwriting" ||
-      q.response_mode === "upload"
-    ) {
-      base.response_mode = q.response_mode;
+    const mode = resolveResponseMode(q);
+    if (mode === "speech" || mode === "handwriting" || mode === "upload") {
+      base.response_mode = mode;
       base.response_asset_ids = [];
       base.answer = "";
     } else if (
