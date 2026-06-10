@@ -183,6 +183,45 @@ describe("MessageBubble 媒体选项渲染", () => {
     const img = wrapper.find('img[src="https://example.com/dog.jpg"]');
     expect(img.exists()).toBe(true);
   });
+  it("media_id 找不到匹配资产时不渲染媒体，不崩溃，保留文本兜底", () => {
+    const wrapper = mount(MessageBubble, {
+      props: {
+        message: makeChoiceQuestion({
+          question_type: "multiple_choice",
+          // 没有提供 media 数组，但选项有 media_id
+          options: [
+            { index: "A", text: "狗", media_id: "media-001" },
+            { index: "B", text: "猫" },
+          ],
+        }),
+      },
+    });
+    const text = wrapper.text();
+    expect(text).toContain("狗");
+    expect(text).toContain("猫");
+    // 不应该渲染任何媒体组件
+    const imgs = wrapper.findAll("img");
+    expect(imgs.length).toBe(0);
+  });
+
+  it("media_id 指向不存在资产时，多选分支不崩溃并保留文本兜底", () => {
+    const wrapper = mount(MessageBubble, {
+      props: {
+        message: makeChoiceQuestion({
+          question_type: "multiple_select",
+          question_text: "选出与图片匹配的词。",
+          options: [
+            { index: "A", text: "苹果", media_id: "media-missing" },
+            { index: "B", text: "香蕉" },
+          ],
+        }),
+      },
+    });
+    const text = wrapper.text();
+    expect(text).toContain("苹果");
+    expect(text).toContain("香蕉");
+    expect(wrapper.find("img").exists()).toBe(false);
+  });
 });
 
 describe("MessageBubble 思考过程位置", () => {

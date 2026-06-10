@@ -1,4 +1,4 @@
-import type { ItemData } from "@/types";
+import type { ItemData, BatchAnswerPayload } from "@/types";
 
 const BASE_URL = import.meta.env.VITE_API_URL || "";
 
@@ -150,12 +150,7 @@ export async function endSession(
 /** SSE streaming batch answer evaluation. Streams thinking steps and per-question feedback. */
 export async function batchSubmitAnswer(
   sessionId: string,
-  answers: Array<{
-    question_index: number;
-    answer: string;
-    response_mode?: string;
-    response_asset_ids?: string[];
-  }>,
+  answers: BatchAnswerPayload[],
   onThinking: (step: { agent: string; label: string; output: string }) => void,
   signal?: AbortSignal,
   submissionId?: string

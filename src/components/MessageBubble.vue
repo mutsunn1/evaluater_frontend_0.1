@@ -123,10 +123,11 @@
                     {{ batchAnswers[qi] === opt.index ? "✓" : opt.index }}
                   </span>
                   <MediaOptionAsset
-                    v-if="opt.media_id"
+                    v-if="opt.media_id && findMediaById(q.media, opt.media_id)"
                     :asset="findMediaById(q.media, opt.media_id)!"
                   />
-                  <span v-if="opt.text">{{ opt.text }}</span>
+                  <span v-if="opt.text || !opt.media_id">{{ opt.text }}</span>
+                  <span v-else>{{ opt.index }}. media</span>
                 </button>
               </div>
               <!-- Multiple choice (multiple select) -->
@@ -170,10 +171,11 @@
                     }}
                   </span>
                   <MediaOptionAsset
-                    v-if="opt.media_id"
+                    v-if="opt.media_id && findMediaById(q.media, opt.media_id)"
                     :asset="findMediaById(q.media, opt.media_id)!"
                   />
-                  <span v-if="opt.text">{{ opt.text }}</span>
+                  <span v-if="opt.text || !opt.media_id">{{ opt.text }}</span>
+                  <span v-else>{{ opt.index }}. media</span>
                 </button>
               </div>
               <!-- Fallback: choice without options → text input -->
@@ -305,7 +307,12 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from "vue";
-import type { ChatMessage, ThinkingStep, MediaAsset } from "@/types";
+import type {
+  ChatMessage,
+  ThinkingStep,
+  MediaAsset,
+  BatchAnswerPayload,
+} from "@/types";
 import QuestionRenderer from "@/components/QuestionRenderer.vue";
 import ThinkingProcess from "@/components/ThinkingProcess.vue";
 import MediaPromptBlock from "@/components/MediaPromptBlock.vue";
@@ -317,7 +324,7 @@ import UploadResponsePlaceholder from "@/components/UploadResponsePlaceholder.vu
 const props = defineProps<{ message: ChatMessage }>();
 const emit = defineEmits<{
   answer: [text: string];
-  batchSubmit: [answers: Array<{ question_index: number; answer: string }>];
+  batchSubmit: [answers: BatchAnswerPayload[]];
   openThinking: [steps: ThinkingStep[]];
 }>();
 
@@ -484,10 +491,7 @@ function submitBatch() {
     }
     return base;
   });
-  emit(
-    "batchSubmit",
-    answers as Array<{ question_index: number; answer: string }>
-  );
+  emit("batchSubmit", answers as unknown as BatchAnswerPayload[]);
 }
 
 function onAnswer(text: string) {

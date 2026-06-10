@@ -110,6 +110,13 @@ export interface ColdStartQuestion {
   question: string;
 }
 
+export interface BatchAnswerPayload {
+  question_index: number;
+  answer: string;
+  response_mode?: string;
+  response_asset_ids?: string[];
+}
+
 export interface SessionResult {
   total_items: number;
   average_score: number;

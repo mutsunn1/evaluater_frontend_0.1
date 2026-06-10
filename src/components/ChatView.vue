@@ -175,7 +175,11 @@ import {
 } from "@/utils/session";
 import { selectVisibleThinkingSteps } from "@/utils/thinking";
 import { createClientId } from "@/utils/id";
-import type { ThinkingStep, ConfidenceStats } from "@/types";
+import type {
+  ThinkingStep,
+  ConfidenceStats,
+  BatchAnswerPayload,
+} from "@/types";
 import MessageBubble from "@/components/MessageBubble.vue";
 import ThinkingSidebar from "@/components/ThinkingSidebar.vue";
 import ConfidenceBar from "@/components/ConfidenceBar.vue";
@@ -538,26 +542,20 @@ async function retryQuestion() {
 }
 
 /** Handle batch submit: all questions in the current batch */
-async function handleBatchSubmit(
-  answers: Array<{
-    question_index: number;
-    answer: string;
-    response_mode?: string;
-  }>
-) {
+async function handleBatchSubmit(answers: BatchAnswerPayload[]) {
   if (!sessionStore.sessionId) return;
   const submissionId = createClientId();
 
   // Add user answers as a single message
   const answerSummary = answers
     .map((a) => {
-      const label = (a as any).response_mode
+      const label = a.response_mode
         ? {
             speech: "语音作答:（已提交）",
             handwriting: "手写作答:（已提交）",
             upload: "上传作答:（已提交）",
-          }[(a as any).response_mode] ||
-          `第${a.question_index + 1}题（${(a as any).response_mode}）: ${a.answer}`
+          }[a.response_mode] ||
+          `第${a.question_index + 1}题（${a.response_mode}）: ${a.answer}`
         : `第${a.question_index + 1}题: ${a.answer}`;
       return a.answer ? `第${a.question_index + 1}题: ${a.answer}` : label;
     })
