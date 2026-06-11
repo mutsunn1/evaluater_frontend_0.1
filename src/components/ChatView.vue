@@ -179,6 +179,7 @@ import type {
   ThinkingStep,
   ConfidenceStats,
   BatchAnswerPayload,
+  ItemData,
 } from "@/types";
 import MessageBubble from "@/components/MessageBubble.vue";
 import ThinkingSidebar from "@/components/ThinkingSidebar.vue";
@@ -475,6 +476,9 @@ async function fetchNextQuestion(requestId?: string) {
   if (!sessionStore.sessionId) return;
   const questionRequestId = requestId || createClientId();
   activeQuestionRequestId.value = questionRequestId;
+  sessionStore.currentQuestions = [];
+  sessionStore.currentQuestionIndex = 0;
+  sessionStore.isWaitingAnswer = false;
   sessionStore.isLoading = true;
   sessionStore.loadingPhase = "generating";
   sessionStore.error = null;
@@ -483,6 +487,40 @@ async function fetchNextQuestion(requestId?: string) {
 
   try {
     const thinkingSteps: ThinkingStep[] = [];
+    const streamedQuestions: ItemData[] = [];
+    let questionMessageId: string | null = null;
+
+    const showQuestions = (questions: ItemData[]) => {
+      if (questions.length === 0) return;
+      if (!questionMessageId) {
+        questionMessageId = createClientId();
+        sessionStore.addMessage({
+          id: questionMessageId,
+          role: "question",
+          content: "",
+          batch_questions: [...questions],
+          timestamp: new Date().toISOString(),
+          thinking_steps:
+            thinkingSteps.length > 0 ? [...thinkingSteps] : undefined,
+        });
+        scrollToLatest();
+      } else {
+        const message = sessionStore.messages.find(
+          (msg) => msg.id === questionMessageId
+        );
+        if (message) {
+          message.batch_questions = [...questions];
+          if (thinkingSteps.length > 0) {
+            message.thinking_steps = [...thinkingSteps];
+          }
+        }
+      }
+      sessionStore.currentQuestions = [...questions];
+      sessionStore.currentQuestionIndex = 0;
+      sessionStore.isWaitingAnswer = true;
+      sessionStore.isLoading = false;
+      questionPushedAt = questionPushedAt || Date.now();
+    };
 
     const resp = await streamQuestion(
       sessionStore.sessionId,
@@ -495,24 +533,17 @@ async function fetchNextQuestion(requestId?: string) {
         });
       },
       getSignal(),
-      questionRequestId
+      questionRequestId,
+      (question) => {
+        streamedQuestions.push(question);
+        showQuestions(streamedQuestions);
+      }
     );
 
     const questions = resp.questions;
 
     if (questions.length > 0) {
-      sessionStore.addMessage({
-        id: createClientId(),
-        role: "question",
-        content: "",
-        batch_questions: questions,
-        timestamp: new Date().toISOString(),
-        thinking_steps: thinkingSteps.length > 0 ? thinkingSteps : undefined,
-      });
-      sessionStore.currentQuestions = questions;
-      sessionStore.currentQuestionIndex = 0;
-      sessionStore.isWaitingAnswer = true;
-      scrollToLatest();
+      showQuestions(questions);
     } else {
       sessionStore.addMessage({
         id: createClientId(),
@@ -523,7 +554,7 @@ async function fetchNextQuestion(requestId?: string) {
       sessionStore.isWaitingAnswer = false;
     }
 
-    questionPushedAt = Date.now();
+    questionPushedAt = questionPushedAt || Date.now();
     activeQuestionRequestId.value = null;
     questionRetryRequestId.value = null;
     liveThinking.value = [];

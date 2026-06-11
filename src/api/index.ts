@@ -96,7 +96,8 @@ export async function streamQuestion(
   sessionId: string,
   onThinking: (step: { agent: string; label: string; output: string }) => void,
   signal?: AbortSignal,
-  requestId?: string
+  requestId?: string,
+  onQuestion?: (question: ItemData) => void
 ): Promise<{ questions: ItemData[]; batch_id: string }> {
   const requestQuery = requestId
     ? `?request_id=${encodeURIComponent(requestId)}`
@@ -117,7 +118,7 @@ export async function streamQuestion(
       onThinking(parsed as { agent: string; label: string; output: string });
     } else if (eventType === "question") {
       const qData = (parsed.question as Record<string, unknown>) || {};
-      questions.push({
+      const question = {
         ...qData,
         batch_id: parsed.batch_id as string,
         batch_index: parsed.batch_index as number,
@@ -126,7 +127,9 @@ export async function streamQuestion(
           | "vocabulary"
           | "grammar"
           | "reading",
-      } as ItemData);
+      } as ItemData;
+      questions.push(question);
+      onQuestion?.(question);
       batchId = (parsed.batch_id as string) || batchId;
     } else if (eventType === "error") {
       throw new Error((parsed.error as string) || "Stream error");

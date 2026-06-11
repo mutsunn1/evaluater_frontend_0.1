@@ -195,6 +195,116 @@ describe("ChatView 实时思考气泡", () => {
     wrapper.unmount();
   });
 
+  it("收到第一道 question 事件时应立即显示题目，不等待 stream 结束", async () => {
+    const pinia = createPinia();
+    setActivePinia(pinia);
+    const store = useSessionStore();
+    store.sessionId = "session-1";
+    store.messages = [
+      {
+        id: "welcome",
+        role: "system",
+        content: "开始评测",
+        timestamp: new Date().toISOString(),
+      },
+    ];
+
+    vi.mocked(streamQuestion).mockImplementation(
+      async (_sessionId, _onThinking, _signal, _requestId, onQuestion) => {
+        onQuestion?.({
+          question_type: "multiple_choice",
+          scene: "日常",
+          grammar_focus: "问候语",
+          target_level: "HSK1",
+          question_text: "你好吗？",
+          options: [{ index: "A", text: "好" }],
+          skill_dimension: "vocabulary",
+        });
+
+        return new Promise(() => {});
+      }
+    );
+
+    const wrapper = mountChatView(pinia);
+    await flushPromises();
+
+    expect(store.currentQuestions[0].question_text).toBe("你好吗？");
+    expect(store.isWaitingAnswer).toBe(true);
+    expect(store.isLoading).toBe(false);
+    expect(store.messages.some((msg) => msg.role === "question")).toBe(true);
+
+    wrapper.unmount();
+  });
+
+  it("拉取下一题时不应把上一轮残留题目混入当前题目", async () => {
+    const pinia = createPinia();
+    setActivePinia(pinia);
+    const store = useSessionStore();
+    store.sessionId = "session-1";
+    store.currentQuestions = [
+      {
+        question_type: "multiple_choice",
+        scene: "旧场景",
+        grammar_focus: "旧词汇",
+        target_level: "HSK1",
+        question_text: "旧词汇题",
+        options: [{ index: "A", text: "旧" }],
+        skill_dimension: "vocabulary",
+      },
+      {
+        question_type: "multiple_choice",
+        scene: "旧场景",
+        grammar_focus: "旧语法",
+        target_level: "HSK1",
+        question_text: "旧语法题",
+        options: [{ index: "A", text: "旧" }],
+        skill_dimension: "grammar",
+      },
+    ];
+    store.messages = [
+      {
+        id: "welcome",
+        role: "system",
+        content: "开始评测",
+        timestamp: new Date().toISOString(),
+      },
+    ];
+
+    vi.mocked(streamQuestion).mockImplementation(
+      async (_sessionId, _onThinking, _signal, _requestId, onQuestion) => {
+        const question = {
+          question_type: "multiple_choice",
+          scene: "阅读",
+          grammar_focus: "阅读理解",
+          target_level: "HSK3",
+          question_text: "新阅读题",
+          options: [{ index: "A", text: "新" }],
+          skill_dimension: "reading",
+        } as const;
+        onQuestion?.(question);
+        return {
+          batch_id: "batch-new",
+          questions: [question],
+        };
+      }
+    );
+
+    mountChatView(pinia);
+    await flushPromises();
+
+    expect(store.currentQuestions).toHaveLength(1);
+    expect(store.currentQuestions[0].question_text).toBe("新阅读题");
+    expect(store.currentQuestions[0].skill_dimension).toBe("reading");
+
+    const questionMessage = store.messages.find(
+      (msg) => msg.role === "question"
+    );
+    expect(questionMessage?.batch_questions).toHaveLength(1);
+    expect(questionMessage?.batch_questions?.[0].question_text).toBe(
+      "新阅读题"
+    );
+  });
+
   it("历史消息应能打开完整思考过程面板", async () => {
     const pinia = createPinia();
     setActivePinia(pinia);

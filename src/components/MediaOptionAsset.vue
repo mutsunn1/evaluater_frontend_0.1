@@ -3,7 +3,7 @@
     v-if="asset.type === 'image'"
     :src="asset.url"
     :alt="asset.alt || ''"
-    class="option-media-image h-16 w-16 rounded object-cover"
+    class="option-media-image h-16 w-16 rounded object-contain"
   />
   <span v-if="asset.type === 'audio'" class="option-media-audio text-lg"
     >🔊</span

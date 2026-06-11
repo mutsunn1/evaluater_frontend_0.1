@@ -21,6 +21,12 @@ export interface MediaAsset {
   url: string;
   mime_type?: string;
   alt?: string;
+  descriptor?: string;
+  tags?: string[];
+  provider?: string;
+  license?: string;
+  attribution?: string;
+  project_url?: string;
 }
 
 export interface QuestionOption {
