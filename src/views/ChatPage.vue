@@ -6,7 +6,9 @@
     <!-- Right: main content -->
     <div class="flex min-w-0 flex-1 flex-col overflow-hidden">
       <!-- Top bar -->
-      <header class="flex min-h-14 items-center justify-between gap-2 border-b border-gray-200 bg-white px-3 py-2 sm:px-4 sm:py-3">
+      <header
+        class="flex min-h-14 items-center justify-between gap-2 border-b border-gray-200 bg-white px-3 py-2 sm:px-4 sm:py-3"
+      >
         <div class="flex min-w-0 items-center gap-2 sm:gap-3">
           <button
             data-testid="mobile-profile-btn"
@@ -14,21 +16,42 @@
             aria-label="打开用户资料"
             @click="mobileProfileOpen = !mobileProfileOpen"
           >
-            <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
-              <path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+            <svg
+              class="h-5 w-5"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+              <circle cx="9" cy="7" r="4" />
+              <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+              <path d="M16 3.13a4 4 0 0 1 0 7.75" />
             </svg>
           </button>
-          <h1 class="truncate text-base font-semibold text-gray-900 sm:text-lg">中文水平评测</h1>
-          <span class="rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-medium text-blue-700">
+          <h1 class="truncate text-base font-semibold text-gray-900 sm:text-lg">
+            中文水平评测
+          </h1>
+          <span
+            class="rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-medium text-blue-700"
+          >
             {{ auth.userId }}
           </span>
         </div>
         <div class="flex shrink-0 items-center gap-1.5 sm:gap-2">
-          <button v-if="sessionStore.sessionId && !sessionStore.sessionResult" class="btn-danger px-2.5 py-2 text-xs sm:px-4" @click="handleEndSession">
+          <button
+            v-if="sessionStore.sessionId && !sessionStore.sessionResult"
+            class="btn-danger px-2.5 py-2 text-xs sm:px-4"
+            @click="handleEndSession"
+          >
             结束评测
           </button>
-          <button class="btn-secondary px-2.5 py-2 text-xs sm:px-4" @click="handleLogout">退出</button>
+          <button
+            class="btn-secondary px-2.5 py-2 text-xs sm:px-4"
+            @click="handleLogout"
+          >
+            退出
+          </button>
         </div>
       </header>
 
@@ -46,9 +69,15 @@
             <!-- HSK Level -->
             <div class="flex items-center gap-3">
               <div class="text-xl font-bold text-blue-400">
-                {{ mobileProfile.hsk_level > 1 ? 'HSK ' + mobileProfile.hsk_level : '—' }}
+                {{
+                  mobileProfile.hsk_level > 1
+                    ? "HSK " + mobileProfile.hsk_level
+                    : "—"
+                }}
               </div>
-              <div class="text-xs text-gray-400">{{ mobileProfile.hsk_level > 1 ? '当前等级' : '等待评测' }}</div>
+              <div class="text-xs text-gray-400">
+                {{ mobileProfile.hsk_level > 1 ? "当前等级" : "等待评测" }}
+              </div>
             </div>
 
             <!-- Skill bars: 2x2 grid -->
@@ -56,24 +85,49 @@
               <div v-for="skill in skills" :key="skill.key" class="space-y-0.5">
                 <div class="flex items-center justify-between text-xs">
                   <span class="text-gray-400">{{ skill.label }}</span>
-                  <span class="font-mono text-gray-300">{{ mobileHasData ? (mobileProfile.skill_levels?.[skill.key] || 0) + '%' : '—' }}</span>
+                  <span class="font-mono text-gray-300">{{
+                    mobileHasData
+                      ? (mobileProfile.skill_levels?.[skill.key] || 0) + "%"
+                      : "—"
+                  }}</span>
                 </div>
                 <div class="h-1.5 overflow-hidden rounded-full bg-gray-700">
                   <div
                     v-if="mobileHasData"
                     class="h-full rounded-full transition-all duration-500"
                     :class="skill.color"
-                    :style="{ width: (mobileProfile.skill_levels?.[skill.key] || 0) + '%' }"
+                    :style="{
+                      width:
+                        (mobileProfile.skill_levels?.[skill.key] || 0) + '%',
+                    }"
                   />
-                  <div v-else class="h-full rounded-full bg-gray-600" style="width: 0%" />
+                  <div
+                    v-else
+                    class="h-full rounded-full bg-gray-600"
+                    style="width: 0%"
+                  />
                 </div>
               </div>
             </div>
 
             <!-- Strengths + focus -->
-            <div v-if="mobileProfile.strengths?.length || mobileProfile.next_focus?.length" class="flex flex-wrap gap-x-4 gap-y-0.5 text-xs">
-              <span v-if="mobileProfile.strengths?.length" class="text-green-300">已掌握: {{ mobileProfile.strengths.join('、') }}</span>
-              <span v-if="mobileProfile.next_focus?.length" class="text-yellow-300">建议关注: {{ mobileProfile.next_focus.join('、') }}</span>
+            <div
+              v-if="
+                mobileProfile.strengths?.length ||
+                mobileProfile.next_focus?.length
+              "
+              class="flex flex-wrap gap-x-4 gap-y-0.5 text-xs"
+            >
+              <span
+                v-if="mobileProfile.strengths?.length"
+                class="text-green-300"
+                >已掌握: {{ mobileProfile.strengths.join("、") }}</span
+              >
+              <span
+                v-if="mobileProfile.next_focus?.length"
+                class="text-yellow-300"
+                >建议关注: {{ mobileProfile.next_focus.join("、") }}</span
+              >
             </div>
           </div>
         </div>
@@ -81,7 +135,10 @@
 
       <!-- Main content -->
       <main class="flex-1 overflow-hidden">
-        <ChatView v-if="!sessionStore.sessionResult" @profile-update="onProfileUpdate" />
+        <ChatView
+          v-if="!sessionStore.sessionResult"
+          @profile-update="onProfileUpdate"
+        />
         <SessionReport v-else :result="sessionStore.sessionResult" />
       </main>
     </div>
@@ -89,28 +146,37 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue';
-import { useAuthStore } from '@/stores/auth';
-import { useSessionStore } from '@/stores/session';
-import { useRouter } from 'vue-router';
-import ChatView from '@/components/ChatView.vue';
-import SessionReport from '@/components/SessionReport.vue';
-import UserProfileSidebar from '@/components/UserProfileSidebar.vue';
-import { endSession, getConfidence, getUserProfile } from '@/api';
-import { buildSessionResult, createDefaultConfidence } from '@/utils/session';
-import type { UserProfileData } from '@/types';
+import { ref, computed, onMounted, onUnmounted } from "vue";
+import { useAuthStore } from "@/stores/auth";
+import { useSessionStore } from "@/stores/session";
+import { useRouter } from "vue-router";
+import ChatView from "@/components/ChatView.vue";
+import SessionReport from "@/components/SessionReport.vue";
+import UserProfileSidebar from "@/components/UserProfileSidebar.vue";
+import { endSession, getConfidence, getUserProfile } from "@/api";
+import { buildSessionResult, createDefaultConfidence } from "@/utils/session";
+import type { UserProfileData } from "@/types";
 
 const auth = useAuthStore();
 const sessionStore = useSessionStore();
 const router = useRouter();
-const profileSidebar = ref<InstanceType<typeof UserProfileSidebar> | null>(null);
+const profileSidebar = ref<InstanceType<typeof UserProfileSidebar> | null>(
+  null
+);
 const mobileProfileOpen = ref(false);
 
 // Mobile profile data (same API as desktop sidebar)
 const mobileProfile = ref<UserProfileData>({
-  user_id: '',
+  user_id: "",
   hsk_level: 1,
-  skill_levels: { hsk: 0, vocabulary: 0, grammar: 0, reading: 0 },
+  skill_levels: {
+    hsk: 0,
+    vocabulary: 0,
+    grammar: 0,
+    reading: 0,
+    listening: 0,
+    speaking: 0,
+  },
   native_language: null,
   stubborn_errors: [],
   strengths: [],
@@ -118,16 +184,30 @@ const mobileProfile = ref<UserProfileData>({
   updated_at: null,
 });
 
-const skills: { key: keyof NonNullable<UserProfileData['skill_levels']>; label: string; color: string }[] = [
-  { key: 'hsk', label: '综合', color: 'bg-blue-500' },
-  { key: 'vocabulary', label: '词汇', color: 'bg-purple-500' },
-  { key: 'grammar', label: '语法', color: 'bg-green-500' },
-  { key: 'reading', label: '阅读', color: 'bg-orange-500' },
+const skills: {
+  key: keyof NonNullable<UserProfileData["skill_levels"]>;
+  label: string;
+  color: string;
+}[] = [
+  { key: "hsk", label: "综合", color: "bg-blue-500" },
+  { key: "vocabulary", label: "词汇", color: "bg-purple-500" },
+  { key: "grammar", label: "语法", color: "bg-green-500" },
+  { key: "reading", label: "阅读", color: "bg-orange-500" },
+  { key: "listening", label: "听力", color: "bg-pink-500" },
+  { key: "speaking", label: "口语", color: "bg-cyan-500" },
 ];
 
 const mobileHasData = computed(() => {
   const sl = mobileProfile.value.skill_levels;
-  return sl && (sl.hsk > 0 || sl.vocabulary > 0 || sl.grammar > 0 || sl.reading > 0);
+  return (
+    sl &&
+    (sl.hsk > 0 ||
+      sl.vocabulary > 0 ||
+      sl.grammar > 0 ||
+      sl.reading > 0 ||
+      (sl.listening ?? 0) > 0 ||
+      (sl.speaking ?? 0) > 0)
+  );
 });
 
 const fetchFailed = ref(false);
@@ -157,7 +237,7 @@ onUnmounted(() => {
 function handleLogout() {
   auth.logout();
   sessionStore.clearSession();
-  router.push('/');
+  router.push("/");
 }
 
 async function handleEndSession() {
@@ -170,7 +250,10 @@ async function handleEndSession() {
     const summary = endResp.summary as Record<string, unknown> | undefined;
     sessionStore.sessionResult = buildSessionResult(summary, confResp);
   } catch {
-    sessionStore.sessionResult = buildSessionResult(undefined, createDefaultConfidence());
+    sessionStore.sessionResult = buildSessionResult(
+      undefined,
+      createDefaultConfidence()
+    );
   }
 }
 

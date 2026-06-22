@@ -107,6 +107,27 @@ describe("streamQuestion", () => {
     );
     expect(result.questions[0].question_text).toBe("你好吗？");
   });
+
+  it("应保留 listening skill_dimension", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(
+        buildSseResponse(
+          [
+            "event: question",
+            'data: {"item_id":1,"skill_dimension":"listening","question":{"question_type":"listening_comprehension","response_mode":"choice","question_text":"请听音频，选择正确答案。","options":[]},"batch_id":"batch-1","batch_index":0,"batch_total":1}',
+            "",
+            "",
+          ].join("\n")
+        )
+      );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await streamQuestion("session-1", vi.fn());
+
+    expect(result.questions[0].skill_dimension).toBe("listening");
+    expect(result.questions[0].question_type).toBe("listening_comprehension");
+  });
 });
 
 describe("batchSubmitAnswer", () => {

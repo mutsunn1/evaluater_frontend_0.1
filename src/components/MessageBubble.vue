@@ -41,15 +41,43 @@
             <!-- Media prompt blocks -->
             <template v-if="q.media && q.media.length">
               <MediaPromptBlock
-                v-for="m in q.media.filter((a: any) => a.role === 'prompt')"
+                v-for="m in q.media.filter(
+                  (a: any) =>
+                    a.role === 'prompt' ||
+                    a.role === 'question' ||
+                    a.role === 'stimulus'
+                )"
                 :key="m.id"
                 :asset="m"
               />
             </template>
             <!-- Response mode placeholders (speech/handwriting/upload) -->
-            <SpeechResponsePlaceholder
-              v-if="resolveResponseMode(q) === 'speech'"
-            />
+            <template v-if="resolveResponseMode(q) === 'speech'">
+              <p
+                v-if="q.question_text"
+                class="whitespace-pre-wrap text-base font-medium text-gray-800 mb-3"
+              >
+                {{ q.question_text }}
+              </p>
+              <SpeechRecorder
+                :session-id="props.message.session_id || ''"
+                :question-item-id="(q.question_item_id as number) || 0"
+                @answer="
+                  (assetId: string) => {
+                    speechAssets[qi] = assetId;
+                    batchAnswers[qi] = assetId;
+                  }
+                "
+              />
+              <button
+                v-for="opt in (q.options || []).filter(isSkipOption)"
+                :key="opt.index"
+                :class="skipOptionButtonClass(qi, opt)"
+                @click="batchAnswers[qi] = opt.index"
+              >
+                {{ opt.text }}
+              </button>
+            </template>
             <HandwritingResponsePlaceholder
               v-else-if="resolveResponseMode(q) === 'handwriting'"
             />
@@ -92,9 +120,7 @@
               <!-- Single choice -->
               <div
                 v-if="
-                  q.question_type === 'multiple_choice' &&
-                  q.options &&
-                  q.options.length > 0
+                  isSingleChoiceQuestion(q) && q.options && q.options.length > 0
                 "
                 class="space-y-2"
               >
@@ -104,21 +130,12 @@
                 <button
                   v-for="opt in q.options"
                   :key="opt.index"
-                  :class="[
-                    'flex min-h-12 w-full items-center rounded-lg border px-3 py-3 text-left transition-all sm:px-4',
-                    batchAnswers[qi] === opt.index
-                      ? 'border-blue-500 bg-blue-50 text-blue-700 ring-2 ring-blue-500/20'
-                      : 'border-gray-200 bg-white text-gray-700 hover:border-blue-300 hover:bg-blue-50/50',
-                  ]"
+                  :class="optionButtonClass(qi, opt)"
                   @click="batchAnswers[qi] = opt.index"
                 >
                   <span
                     class="mr-3 flex h-6 w-6 items-center justify-center rounded-full border-2 text-xs font-bold"
-                    :class="
-                      batchAnswers[qi] === opt.index
-                        ? 'border-blue-500 bg-blue-500 text-white'
-                        : 'border-gray-300'
-                    "
+                    :class="optionMarkerClass(qi, opt)"
                   >
                     {{ batchAnswers[qi] === opt.index ? "✓" : opt.index }}
                   </span>
@@ -148,21 +165,12 @@
                 <button
                   v-for="opt in q.options"
                   :key="opt.index"
-                  :class="[
-                    'flex min-h-12 w-full items-center rounded-lg border px-3 py-3 text-left transition-all sm:px-4',
-                    (selectedMulti[qi] || []).includes(opt.index)
-                      ? 'border-blue-500 bg-blue-50 text-blue-700 ring-2 ring-blue-500/20'
-                      : 'border-gray-200 bg-white text-gray-700 hover:border-blue-300 hover:bg-blue-50/50',
-                  ]"
+                  :class="optionButtonClass(qi, opt, true)"
                   @click="toggleMultiSelect(qi, opt.index)"
                 >
                   <span
                     class="mr-3 flex h-6 w-6 items-center justify-center rounded border-2 text-xs font-bold"
-                    :class="
-                      (selectedMulti[qi] || []).includes(opt.index)
-                        ? 'border-blue-500 bg-blue-500 text-white'
-                        : 'border-gray-300'
-                    "
+                    :class="optionMarkerClass(qi, opt, true)"
                   >
                     {{
                       (selectedMulti[qi] || []).includes(opt.index)
@@ -312,12 +320,14 @@ import type {
   ThinkingStep,
   MediaAsset,
   BatchAnswerPayload,
+  ItemData,
+  QuestionOption,
 } from "@/types";
 import QuestionRenderer from "@/components/QuestionRenderer.vue";
 import ThinkingProcess from "@/components/ThinkingProcess.vue";
 import MediaPromptBlock from "@/components/MediaPromptBlock.vue";
 import MediaOptionAsset from "@/components/MediaOptionAsset.vue";
-import SpeechResponsePlaceholder from "@/components/SpeechResponsePlaceholder.vue";
+import SpeechRecorder from "@/components/SpeechRecorder.vue";
 import HandwritingResponsePlaceholder from "@/components/HandwritingResponsePlaceholder.vue";
 import UploadResponsePlaceholder from "@/components/UploadResponsePlaceholder.vue";
 
@@ -414,17 +424,105 @@ function resolveResponseMode(q: {
   if (
     q.question_type === "multiple_choice" ||
     q.question_type === "multiple_select" ||
-    q.question_type === "true_false"
+    q.question_type === "true_false" ||
+    q.question_type === "listening" ||
+    q.question_type === "listening_comprehension"
   ) {
     return "choice";
   }
+  if (
+    q.question_type === "speaking" ||
+    q.question_type === "speaking_response"
+  ) {
+    return "speech";
+  }
   return "text";
+}
+
+function isPlaceholderMode(mode: string): boolean {
+  return mode === "speech" || mode === "handwriting" || mode === "upload";
+}
+
+function isSkipOption(opt: QuestionOption): boolean {
+  return opt.answer_behavior === "skip_modality";
+}
+
+function getSkipOption(
+  q: Pick<ItemData, "options">
+): QuestionOption | undefined {
+  return q.options?.find(isSkipOption);
+}
+
+function isSingleChoiceQuestion(q: ItemData): boolean {
+  return (
+    q.question_type === "multiple_choice" ||
+    q.question_type === "listening" ||
+    q.question_type === "listening_comprehension" ||
+    (resolveResponseMode(q) === "choice" &&
+      q.question_type !== "multiple_select" &&
+      q.question_type !== "true_false")
+  );
+}
+
+function isOptionSelected(
+  qi: number,
+  opt: QuestionOption,
+  multi = false
+): boolean {
+  return multi
+    ? (selectedMulti.value[qi] || []).includes(opt.index)
+    : batchAnswers.value[qi] === opt.index;
+}
+
+function optionButtonClass(
+  qi: number,
+  opt: QuestionOption,
+  multi = false
+): string[] {
+  const selected = isOptionSelected(qi, opt, multi);
+  const base =
+    "flex min-h-12 w-full items-center rounded-lg border px-3 py-3 text-left transition-all sm:px-4";
+  if (isSkipOption(opt)) {
+    return [
+      base,
+      selected
+        ? "border-gray-500 bg-gray-100 text-gray-800 ring-2 ring-gray-400/20"
+        : "border-dashed border-gray-300 bg-gray-50 text-gray-600 hover:border-gray-400 hover:bg-gray-100",
+    ];
+  }
+  return [
+    base,
+    selected
+      ? "border-blue-500 bg-blue-50 text-blue-700 ring-2 ring-blue-500/20"
+      : "border-gray-200 bg-white text-gray-700 hover:border-blue-300 hover:bg-blue-50/50",
+  ];
+}
+
+function optionMarkerClass(
+  qi: number,
+  opt: QuestionOption,
+  multi = false
+): string {
+  const selected = isOptionSelected(qi, opt, multi);
+  if (isSkipOption(opt)) {
+    return selected
+      ? "border-gray-500 bg-gray-500 text-white"
+      : "border-gray-300 bg-gray-100 text-gray-500";
+  }
+  return selected
+    ? "border-blue-500 bg-blue-500 text-white"
+    : "border-gray-300";
+}
+
+function skipOptionButtonClass(qi: number, opt: QuestionOption): string[] {
+  return optionButtonClass(qi, opt);
 }
 
 // Batch answer state
 const batchAnswers = ref<Record<number, string>>({});
 const batchFillAnswers = ref<Record<number, string>>({});
 const selectedMulti = ref<Record<number, string[]>>({});
+const speechAssets = ref<Record<number, string>>({});
 
 // Reset answers when message changes
 watch(
@@ -452,8 +550,8 @@ const canBatchSubmit = computed(() => {
   return questions.every((q, qi) => {
     const mode = resolveResponseMode(q);
     // speech/handwriting/upload 模式的题目不需要用户交互即可提交
-    if (mode === "speech" || mode === "handwriting" || mode === "upload") {
-      return true;
+    if (isPlaceholderMode(mode)) {
+      return !getSkipOption(q) || !!batchAnswers.value[qi];
     }
     return (
       !!batchAnswers.value[qi] ||
@@ -475,14 +573,26 @@ function submitBatch() {
   const answers = questions.map((q, qi) => {
     const base: Record<string, unknown> = { question_index: qi };
     const mode = resolveResponseMode(q);
-    if (mode === "speech" || mode === "handwriting" || mode === "upload") {
+    if (isPlaceholderMode(mode)) {
       base.response_mode = mode;
-      base.response_asset_ids = [];
-      base.answer = "";
-    } else if (
-      q.question_type === "multiple_choice" ||
-      q.question_type === "true_false"
-    ) {
+      // Speech answers upload an audio asset; the backend resolves the
+      // transcript from response_asset_ids (NOT from `answer`). Stashing the
+      // asset_id in `answer` left it invisible to the grader, so every speech
+      // response was treated as empty. Handwriting/upload keep their value in
+      // `answer` as before.
+      //
+      // Skip-option (answer_behavior=skip_modality) still travels in `answer`
+      // because the backend grader detects the skip via answer text. When a
+      // speech asset was uploaded we prefer that; otherwise we keep whatever
+      // batchAnswers holds (the skip index or empty).
+      if (mode === "speech" && speechAssets.value[qi]) {
+        base.response_asset_ids = [speechAssets.value[qi]];
+        base.answer = "";
+      } else {
+        base.response_asset_ids = [];
+        base.answer = batchAnswers.value[qi] ?? "";
+      }
+    } else if (isSingleChoiceQuestion(q) || q.question_type === "true_false") {
       base.answer = batchAnswers.value[qi] ?? "";
     } else if (q.question_type === "multiple_select") {
       base.answer = (selectedMulti.value[qi] || []).join(", ");

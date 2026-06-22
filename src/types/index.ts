@@ -4,6 +4,10 @@ export type QuestionType =
   | "true_false"
   | "fill_in_blank"
   | "reading_comprehension"
+  | "listening"
+  | "listening_comprehension"
+  | "speaking"
+  | "speaking_response"
   | "unknown";
 
 export type ResponseMode =
@@ -33,6 +37,8 @@ export interface QuestionOption {
   index: string;
   text?: string;
   media_id?: string;
+  answer_behavior?: "skip_modality" | string;
+  modality?: "listening" | "speaking" | string;
 }
 
 export interface SubQuestion {
@@ -53,12 +59,19 @@ export interface ItemData {
   sub_questions?: SubQuestion[];
   blank_count?: number;
   expected_duration_seconds?: number;
-  skill_dimension?: "vocabulary" | "grammar" | "reading";
+  skill_dimension?:
+    | "vocabulary"
+    | "grammar"
+    | "reading"
+    | "listening"
+    | "speaking";
   batch_id?: string;
   batch_index?: number;
   batch_total?: number;
   response_mode?: ResponseMode;
   media?: MediaAsset[];
+  modality?: "listening" | "speaking" | string;
+  question_item_id?: number;
 }
 
 export interface ChatMessage {
@@ -67,6 +80,7 @@ export interface ChatMessage {
   content: string;
   item_data?: ItemData;
   batch_questions?: ItemData[];
+  session_id?: string;
   cold_start_data?: { round: number; label: string };
   timestamp: string;
   thinking_steps?: ThinkingStep[];
@@ -90,7 +104,13 @@ export interface ConfidenceStats {
   total_rounds: number;
   min_rounds: number;
   max_rounds: number;
-  dimension_rounds: { vocabulary: number; grammar: number; reading: number };
+  dimension_rounds: {
+    vocabulary: number;
+    grammar: number;
+    reading: number;
+    listening?: number;
+    speaking?: number;
+  };
 }
 
 export interface UserProfileData {
@@ -101,6 +121,8 @@ export interface UserProfileData {
     vocabulary: number;
     grammar: number;
     reading: number;
+    listening?: number;
+    speaking?: number;
   };
   native_language: string | null;
   stubborn_errors: string[];

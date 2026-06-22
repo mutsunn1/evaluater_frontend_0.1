@@ -126,7 +126,9 @@ export async function streamQuestion(
         skill_dimension: parsed.skill_dimension as
           | "vocabulary"
           | "grammar"
-          | "reading",
+          | "reading"
+          | "listening"
+          | "speaking",
       } as ItemData;
       questions.push(question);
       onQuestion?.(question);
@@ -212,6 +214,35 @@ export async function batchSubmitAnswer(
   throw new Error("Stream ended without answer data");
 }
 
+/** Upload a speech recording for ASR transcription. */
+export async function uploadSpeechRecording(
+  sessionId: string,
+  questionItemId: number,
+  blob: Blob,
+  durationMs: number,
+  filename = "answer.webm"
+): Promise<{
+  asset_id: string;
+  status: string;
+  transcript: string;
+  error?: string;
+}> {
+  const form = new FormData();
+  form.append("file", blob, filename);
+  form.append("question_item_id", String(questionItemId));
+  form.append("duration_ms", String(durationMs));
+
+  const resp = await fetch(
+    `${BASE_URL}/api/v1/sessions/${sessionId}/assets/speech`,
+    { method: "POST", body: form }
+  );
+  if (!resp.ok) {
+    const body = await resp.text();
+    throw new Error(`Speech upload failed: ${resp.status} ${body}`);
+  }
+  return resp.json();
+}
+
 /** SSE stream for answer evaluation with thinking steps. */
 export async function streamSubmitAnswer(
   sessionId: string,
@@ -276,6 +307,8 @@ export async function streamSubmitAnswer(
   throw new Error("Stream ended without answer data");
 }
 
+/** Upload a speech recording for ASR transcription. */
+
 export async function getConfidence(sessionId: string): Promise<{
   accuracy: number;
   ci_lower: number;
@@ -288,7 +321,13 @@ export async function getConfidence(sessionId: string): Promise<{
   total_rounds: number;
   min_rounds: number;
   max_rounds: number;
-  dimension_rounds: { vocabulary: number; grammar: number; reading: number };
+  dimension_rounds: {
+    vocabulary: number;
+    grammar: number;
+    reading: number;
+    listening?: number;
+    speaking?: number;
+  };
 }> {
   return fetchJson(`${BASE_URL}/api/v1/sessions/${sessionId}/confidence`);
 }
@@ -402,3 +441,5 @@ export async function streamColdStartAnswer(
   }
   throw new Error("Stream ended without answer data");
 }
+
+/** Upload a speech recording for ASR transcription. */
