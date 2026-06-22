@@ -13,6 +13,7 @@ export default defineConfig({
     },
   },
   server: {
+    allowedHosts: ['eval.mutsum1.xyz'],
     proxy: {
       '/api': {
         target: 'http://localhost:8000',
