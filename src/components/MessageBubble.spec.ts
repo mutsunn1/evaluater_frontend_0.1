@@ -224,6 +224,160 @@ describe("MessageBubble 媒体选项渲染", () => {
   });
 });
 
+describe("MessageBubble 听力/口语跳过选项", () => {
+  it("听力题的跳过选项应以次要选项风格渲染", () => {
+    const wrapper = mount(MessageBubble, {
+      props: {
+        message: makeChoiceQuestion({
+          question_type: "listening_comprehension",
+          response_mode: "choice",
+          question_text: "听音频，选择你听到的词。",
+          media: [
+            {
+              id: "aud-001",
+              type: "audio",
+              role: "prompt",
+              source: "generated",
+              url: "https://example.com/audio.mp3",
+              alt: "听力音频",
+            },
+          ],
+          options: [
+            { index: "A", text: "苹果" },
+            {
+              index: "Z",
+              text: "现在先不做听力题",
+              answer_behavior: "skip_modality",
+              modality: "listening",
+            },
+          ],
+        }),
+      },
+    });
+
+    const skipButton = wrapper
+      .findAll("button")
+      .find((button) => button.text().includes("现在先不做听力题"));
+    expect(skipButton).toBeTruthy();
+    expect(skipButton!.classes()).toContain("border-dashed");
+    expect(skipButton!.classes()).toContain("bg-gray-50");
+  });
+
+  it("听力题选择跳过后应提交 skip 选项索引", async () => {
+    const wrapper = mount(MessageBubble, {
+      props: {
+        message: makeChoiceQuestion({
+          question_type: "listening_comprehension",
+          response_mode: "choice",
+          question_text: "听音频，选择你听到的词。",
+          options: [
+            { index: "A", text: "苹果" },
+            {
+              index: "Z",
+              text: "现在先不做听力题",
+              answer_behavior: "skip_modality",
+              modality: "listening",
+            },
+          ],
+        }),
+      },
+    });
+
+    const skipButton = wrapper
+      .findAll("button")
+      .find((button) => button.text().includes("现在先不做听力题"));
+    await skipButton!.trigger("click");
+
+    const submit = wrapper
+      .findAll("button")
+      .find((button) => button.text().includes("提交全部答案"));
+    expect(submit).toBeTruthy();
+    await submit!.trigger("click");
+
+    const emitted = wrapper.emitted("batchSubmit")![0][0];
+    expect(emitted).toEqual([{ question_index: 0, answer: "Z" }]);
+  });
+
+  it("口语题选择跳过后应提交 skip 选项索引和 response metadata", async () => {
+    const wrapper = mount(MessageBubble, {
+      props: {
+        message: makeChoiceQuestion({
+          question_type: "speaking_response",
+          response_mode: "speech",
+          question_text: "请用中文介绍你的学校。",
+          options: [
+            {
+              index: "Z",
+              text: "现在先不做口语题",
+              answer_behavior: "skip_modality",
+              modality: "speaking",
+            },
+          ],
+        }),
+      },
+    });
+
+    expect(wrapper.text()).toContain("现在先不做口语题");
+    expect(wrapper.text()).toContain("请完成所有题目后再提交");
+
+    const skipButton = wrapper
+      .findAll("button")
+      .find((button) => button.text().includes("现在先不做口语题"));
+    await skipButton!.trigger("click");
+
+    const submit = wrapper
+      .findAll("button")
+      .find((button) => button.text().includes("提交全部答案"));
+    expect(submit).toBeTruthy();
+    await submit!.trigger("click");
+
+    const emitted = wrapper.emitted("batchSubmit")![0][0];
+    expect(emitted).toEqual([
+      {
+        question_index: 0,
+        answer: "Z",
+        response_mode: "speech",
+        response_asset_ids: [],
+      },
+    ]);
+  });
+
+  it("口语题上传录音后应把 asset_id 放进 response_asset_ids（不是 answer）", async () => {
+    // Regression for "录音无声": the asset_id used to travel in `answer`,
+    // but the backend grader only consults response_asset_ids, so every
+    // uploaded speech response was graded as empty.
+    const wrapper = mount(MessageBubble, {
+      props: {
+        message: makeChoiceQuestion({
+          question_type: "speaking_response",
+          response_mode: "speech",
+          question_text: "请用中文介绍你的学校。",
+        }),
+      },
+    });
+
+    // Simulate the SpeechRecorder emitting its uploaded asset_id.
+    const recorder = wrapper.findComponent({ name: "SpeechRecorder" });
+    await recorder.vm.$emit("answer", "resp_asset_abc123");
+
+    const submit = wrapper
+      .findAll("button")
+      .find((button) => button.text().includes("提交全部答案"));
+    expect(submit).toBeTruthy();
+    await submit!.trigger("click");
+
+    const emitted = wrapper.emitted("batchSubmit")![0][0];
+    expect(emitted).toEqual([
+      {
+        question_index: 0,
+        answer: "",
+        response_mode: "speech",
+        response_asset_ids: ["resp_asset_abc123"],
+      },
+    ]);
+  });
+});
+
 describe("MessageBubble 思考过程位置", () => {
   it("题目消息应在题目正文前显示思考摘要", () => {
     const message: ChatMessage = {

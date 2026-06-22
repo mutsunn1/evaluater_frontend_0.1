@@ -499,6 +499,7 @@ async function fetchNextQuestion(requestId?: string) {
           role: "question",
           content: "",
           batch_questions: [...questions],
+          session_id: sessionStore.sessionId || "",
           timestamp: new Date().toISOString(),
           thinking_steps:
             thinkingSteps.length > 0 ? [...thinkingSteps] : undefined,
@@ -510,6 +511,7 @@ async function fetchNextQuestion(requestId?: string) {
         );
         if (message) {
           message.batch_questions = [...questions];
+          message.session_id = sessionStore.sessionId || "";
           if (thinkingSteps.length > 0) {
             message.thinking_steps = [...thinkingSteps];
           }
