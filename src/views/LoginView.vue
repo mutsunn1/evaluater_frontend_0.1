@@ -1,31 +1,32 @@
 <template>
   <div
-    class="flex min-h-screen items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100"
+    class="relative flex min-h-screen items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 px-4"
   >
-    <div class="w-full max-w-md rounded-2xl bg-white p-8 shadow-lg">
+    <div class="absolute right-4 top-4">
+      <button
+        data-testid="language-switcher"
+        class="rounded-full bg-white px-3 py-1.5 text-xs font-medium text-gray-600 shadow-sm ring-1 ring-gray-200 hover:bg-gray-50"
+        @click="
+          localeStore.setLocale(localeStore.locale === 'en' ? 'zh' : 'en')
+        "
+      >
+        {{ localeStore.locale === "en" ? "中文" : "EN" }}
+      </button>
+    </div>
+
+    <div class="w-full max-w-sm rounded-2xl bg-white p-8 shadow-lg">
       <div class="mb-8 text-center">
-        <div class="flex items-center justify-center gap-2">
-          <h1 class="text-2xl font-bold text-gray-900">
-            {{ $t("common.appTitleFull") }}
-          </h1>
-          <button
-            data-testid="language-switcher"
-            class="rounded-lg px-2 py-1 text-xs font-medium text-gray-600 hover:bg-gray-100"
-            @click="
-              localeStore.setLocale(localeStore.locale === 'en' ? 'zh' : 'en')
-            "
-          >
-            {{ localeStore.locale === "en" ? "中文" : "EN" }}
-          </button>
-        </div>
+        <h1 class="text-xl font-bold leading-tight text-gray-900">
+          {{ $t("common.appTitleFull") }}
+        </h1>
         <p class="mt-2 text-sm text-gray-500">{{ $t("common.appSubtitle") }}</p>
       </div>
 
-      <form @submit.prevent="handleLogin" class="space-y-6">
+      <form @submit.prevent="handleLogin" class="space-y-5">
         <div>
           <label
             for="userId"
-            class="mb-2 block text-sm font-medium text-gray-700"
+            class="mb-1.5 block text-sm font-medium text-gray-700"
             >{{ $t("common.userId") }}</label
           >
           <input
@@ -40,7 +41,7 @@
 
         <button
           type="submit"
-          class="btn-primary w-full py-3 text-base"
+          class="btn-primary w-full py-2.5 text-base"
           :disabled="loading || !inputId.trim()"
         >
           <span v-if="loading">{{ $t("common.loggingIn") }}</span>
