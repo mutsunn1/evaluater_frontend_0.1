@@ -1,0 +1,17 @@
+{
+  "currentLevel": "Current Level",
+  "waitingEvaluation": "Waiting for evaluation",
+  "mastered": "Mastered: {items}",
+  "suggestedFocus": "Suggested focus: {items}",
+  "loadFailed": "Unable to load profile. Please check backend connection.",
+  "unknown": "Unknown",
+  "updatedAt": "Updated {time}",
+  "skills": {
+    "hsk": "Overall",
+    "vocabulary": "Vocabulary",
+    "grammar": "Grammar",
+    "reading": "Reading",
+    "listening": "Listening",
+    "speaking": "Speaking"
+  }
+}

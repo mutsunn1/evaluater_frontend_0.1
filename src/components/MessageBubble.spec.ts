@@ -59,7 +59,7 @@ describe("MessageBubble 向后兼容：response_mode 缺失时推断渲染路径
       },
     });
     const text = wrapper.text();
-    expect(text).toContain("多选题");
+    expect(text).toContain("Multiple select");
     expect(text).toContain("选项一");
     expect(text).toContain("选项二");
     expect(wrapper.find('input[type="text"]').exists()).toBe(false);
@@ -76,8 +76,8 @@ describe("MessageBubble 向后兼容：response_mode 缺失时推断渲染路径
       },
     });
     const text = wrapper.text();
-    expect(text).toContain("正确");
-    expect(text).toContain("错误");
+    expect(text).toContain("True");
+    expect(text).toContain("False");
     expect(wrapper.find('input[type="text"]').exists()).toBe(false);
   });
 
@@ -290,7 +290,7 @@ describe("MessageBubble 听力/口语跳过选项", () => {
 
     const submit = wrapper
       .findAll("button")
-      .find((button) => button.text().includes("提交全部答案"));
+      .find((button) => button.text().includes("Submit All"));
     expect(submit).toBeTruthy();
     await submit!.trigger("click");
 
@@ -318,7 +318,9 @@ describe("MessageBubble 听力/口语跳过选项", () => {
     });
 
     expect(wrapper.text()).toContain("现在先不做口语题");
-    expect(wrapper.text()).toContain("请完成所有题目后再提交");
+    expect(wrapper.text()).toContain(
+      "Please complete all questions before submitting"
+    );
 
     const skipButton = wrapper
       .findAll("button")
@@ -327,7 +329,7 @@ describe("MessageBubble 听力/口语跳过选项", () => {
 
     const submit = wrapper
       .findAll("button")
-      .find((button) => button.text().includes("提交全部答案"));
+      .find((button) => button.text().includes("Submit All"));
     expect(submit).toBeTruthy();
     await submit!.trigger("click");
 
@@ -362,7 +364,7 @@ describe("MessageBubble 听力/口语跳过选项", () => {
 
     const submit = wrapper
       .findAll("button")
-      .find((button) => button.text().includes("提交全部答案"));
+      .find((button) => button.text().includes("Submit All"));
     expect(submit).toBeTruthy();
     await submit!.trigger("click");
 
@@ -375,6 +377,40 @@ describe("MessageBubble 听力/口语跳过选项", () => {
         response_asset_ids: ["resp_asset_abc123"],
       },
     ]);
+  });
+});
+
+describe("MessageBubble system message rendering", () => {
+  it("renders system message content when source=system", () => {
+    const message: ChatMessage = {
+      id: "sys-1",
+      role: "system",
+      source: "system",
+      content: "chat.welcome.coldStart",
+      timestamp: new Date().toISOString(),
+    };
+
+    const wrapper = mount(MessageBubble, {
+      props: { message },
+    });
+
+    expect(wrapper.text()).toContain("Welcome! Before the official assessment");
+  });
+
+  it("renders llm message content verbatim", () => {
+    const message: ChatMessage = {
+      id: "llm-1",
+      role: "system",
+      source: "llm",
+      content: "你好，这是 LLM 返回的中文内容。",
+      timestamp: new Date().toISOString(),
+    };
+
+    const wrapper = mount(MessageBubble, {
+      props: { message },
+    });
+
+    expect(wrapper.text()).toContain("你好，这是 LLM 返回的中文内容。");
   });
 });
 

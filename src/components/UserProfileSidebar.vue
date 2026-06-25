@@ -42,7 +42,7 @@
         v-if="fetchFailed"
         class="rounded-lg border border-red-400/30 bg-red-900/20 px-3 py-2 text-xs text-red-300"
       >
-        无法加载用户资料，请检查后端连接是否正常。
+        {{ $t("profile.loadFailed") }}
       </div>
       <!-- HSK Level -->
       <div class="text-center">
@@ -50,7 +50,11 @@
           {{ profile.hsk_level > 1 ? "HSK " + profile.hsk_level : "—" }}
         </div>
         <div class="text-xs text-gray-400">
-          {{ profile.hsk_level > 1 ? "当前等级" : "等待评测" }}
+          {{
+            profile.hsk_level > 1
+              ? $t("profile.currentLevel")
+              : $t("profile.waitingEvaluation")
+          }}
         </div>
       </div>
 
@@ -59,13 +63,15 @@
         <h4
           class="text-xs font-semibold uppercase tracking-wider text-gray-500"
         >
-          能力维度
+          {{ $t("profile.skills.hsk") }}
         </h4>
         <div v-for="skill in skills" :key="skill.key" class="space-y-1">
           <div class="flex items-center justify-between text-xs">
-            <span>{{ skill.label }}</span>
+            <span>{{ $t(`profile.skills.${skill.key}`) }}</span>
             <span class="font-mono">{{
-              hasData ? (profile.skill_levels?.[skill.key] || 0) + "%" : "未知"
+              hasData
+                ? (profile.skill_levels?.[skill.key] || 0) + "%"
+                : $t("profile.unknown")
             }}</span>
           </div>
           <div class="h-2 overflow-hidden rounded-full bg-gray-700">
@@ -89,7 +95,7 @@
         <h4
           class="text-xs font-semibold uppercase tracking-wider text-gray-500"
         >
-          已掌握
+          {{ $t("profile.mastered", { items: "" }) }}
         </h4>
         <div class="flex flex-wrap gap-1.5">
           <span
@@ -107,7 +113,7 @@
         <h4
           class="text-xs font-semibold uppercase tracking-wider text-gray-500"
         >
-          建议关注
+          {{ $t("profile.suggestedFocus", { items: "" }) }}
         </h4>
         <div class="flex flex-wrap gap-1.5">
           <span
@@ -122,7 +128,7 @@
 
       <!-- Last updated -->
       <div v-if="profile.updated_at" class="text-xs text-gray-600">
-        更新于 {{ formatTime(profile.updated_at) }}
+        {{ $t("profile.updatedAt", { time: formatTime(profile.updated_at) }) }}
       </div>
     </div>
 
@@ -165,15 +171,14 @@ const profile = ref<UserProfileData>({
 
 const skills: {
   key: keyof NonNullable<UserProfileData["skill_levels"]>;
-  label: string;
   color: string;
 }[] = [
-  { key: "hsk", label: "综合水平", color: "bg-blue-500" },
-  { key: "vocabulary", label: "词汇水平", color: "bg-purple-500" },
-  { key: "grammar", label: "语法水平", color: "bg-green-500" },
-  { key: "reading", label: "阅读水平", color: "bg-orange-500" },
-  { key: "listening", label: "听力水平", color: "bg-pink-500" },
-  { key: "speaking", label: "口语水平", color: "bg-cyan-500" },
+  { key: "hsk", color: "bg-blue-500" },
+  { key: "vocabulary", color: "bg-purple-500" },
+  { key: "grammar", color: "bg-green-500" },
+  { key: "reading", color: "bg-orange-500" },
+  { key: "listening", color: "bg-pink-500" },
+  { key: "speaking", color: "bg-cyan-500" },
 ];
 
 // Has any data been collected?

@@ -1,0 +1,19 @@
+{
+  "appTitle": "Chinese Proficiency Evaluation",
+  "appTitleFull": "Chinese Proficiency Evaluation System",
+  "appSubtitle": "AI-powered Chinese proficiency assessment",
+  "userId": "User ID",
+  "userIdPlaceholder": "Enter your user ID",
+  "startEvaluation": "Start Evaluation",
+  "loggingIn": "Logging in...",
+  "login": "Log In",
+  "logout": "Log Out",
+  "send": "Send",
+  "retry": "Retry",
+  "loading": "Loading...",
+  "endEvaluation": "End Evaluation",
+  "openProfile": "Open profile",
+  "error": {
+    "backend": "Failed to connect to backend: {message}"
+  }
+}

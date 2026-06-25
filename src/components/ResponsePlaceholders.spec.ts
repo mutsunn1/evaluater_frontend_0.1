@@ -9,7 +9,7 @@ describe("SpeechRecorder", () => {
     const wrapper = mount(SpeechRecorder, {
       props: {},
     });
-    expect(wrapper.text()).toContain("开始录音");
+    expect(wrapper.text()).toContain("Record your spoken answer");
     expect(wrapper.find('[data-testid="speech-record-btn"]').exists()).toBe(
       true
     );
@@ -19,7 +19,7 @@ describe("SpeechRecorder", () => {
 describe("HandwritingResponsePlaceholder", () => {
   it("renders handwriting canvas placeholder", () => {
     const wrapper = mount(HandwritingResponsePlaceholder);
-    expect(wrapper.text()).toContain("手写");
+    expect(wrapper.text()).toContain("Handwriting");
     const canvas = wrapper.find('[data-testid="handwriting-canvas"]');
     expect(canvas.exists()).toBe(true);
     expect(canvas.attributes("data-hanzi-writer-target")).toBe("true");
@@ -29,7 +29,7 @@ describe("HandwritingResponsePlaceholder", () => {
 describe("UploadResponsePlaceholder", () => {
   it("renders upload drop zone", () => {
     const wrapper = mount(UploadResponsePlaceholder);
-    expect(wrapper.text()).toContain("上传");
+    expect(wrapper.text()).toContain("Upload");
     expect(wrapper.find('[data-testid="upload-drop-zone"]').exists()).toBe(
       true
     );

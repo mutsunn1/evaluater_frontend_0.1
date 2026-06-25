@@ -1,3 +1,24 @@
+<script setup lang="ts">
+import { ref } from "vue";
+import { useI18n } from "vue-i18n";
+import type { ItemData } from "@/types";
+
+defineProps<{ data: ItemData }>();
+const emit = defineEmits<{ select: [text: string] }>();
+const { t } = useI18n();
+const selected = ref<string | null>(null);
+
+function select(index: string) {
+  selected.value = index;
+}
+
+function confirm() {
+  if (selected.value) {
+    emit("select", selected.value);
+  }
+}
+</script>
+
 <template>
   <div>
     <p class="mb-4 text-base font-medium text-gray-800">
@@ -37,26 +58,7 @@
       </button>
     </div>
     <button v-if="selected" class="btn-primary mt-4 w-full" @click="confirm">
-      确认答案
+      {{ t("chat.question.confirm") }}
     </button>
   </div>
 </template>
-
-<script setup lang="ts">
-import { ref } from "vue";
-import type { ItemData } from "@/types";
-
-defineProps<{ data: ItemData }>();
-const emit = defineEmits<{ select: [text: string] }>();
-const selected = ref<string | null>(null);
-
-function select(index: string) {
-  selected.value = index;
-}
-
-function confirm() {
-  if (selected.value) {
-    emit("select", selected.value);
-  }
-}
-</script>

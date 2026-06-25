@@ -28,13 +28,13 @@ describe("ConfidenceBar mobile layout", () => {
     });
 
     const text = wrapper.text();
-    expect(text).toContain("词汇");
-    expect(text).toContain("语法");
-    expect(text).toContain("阅读");
-    expect(text).toContain("听力");
-    expect(text).toContain("口语");
-    expect(text).toContain("正确率");
-    expect(text).toContain("置信度");
+    expect(text).toContain("Vocabulary");
+    expect(text).toContain("Grammar");
+    expect(text).toContain("Reading");
+    expect(text).toContain("Listening");
+    expect(text).toContain("Speaking");
+    expect(text).toContain("Accuracy");
+    expect(text).toContain("Confidence");
     expect(text).toContain("85%");
     expect(text).toContain("75%");
   });
@@ -54,8 +54,8 @@ describe("ConfidenceBar mobile layout", () => {
       },
     });
     const text = wrapper.text();
-    expect(text).toContain("听力");
-    expect(text).toContain("1轮");
+    expect(text).toContain("Listening");
+    expect(text).toContain("1R");
   });
 
   it("renders round progress", () => {
@@ -63,7 +63,7 @@ describe("ConfidenceBar mobile layout", () => {
       props: { stats: makeStats() },
     });
 
-    expect(wrapper.text()).toContain("8 / 18 轮");
+    expect(wrapper.text()).toContain("Round 8 / 18");
   });
 
   it("shows stop indicator when should_stop is true", () => {
@@ -71,7 +71,7 @@ describe("ConfidenceBar mobile layout", () => {
       props: { stats: makeStats({ should_stop: true }) },
     });
 
-    expect(wrapper.text()).toContain("评测完成");
+    expect(wrapper.text()).toContain("Evaluation complete");
   });
 
   it("renders nothing visible when no rounds have been played", () => {

@@ -96,14 +96,14 @@
               </p>
               <div v-if="q.blank_count && q.blank_count > 0" class="space-y-2">
                 <label v-for="n in q.blank_count" :key="n" class="block">
-                  <span class="mb-1 block text-xs text-gray-500"
-                    >第 {{ n }} 空</span
-                  >
+                  <span class="mb-1 block text-xs text-gray-500">{{
+                    t("chat.question.blankLabel", { n })
+                  }}</span>
                   <input
                     v-model="batchFillAnswers[qi]"
                     type="text"
                     class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-                    placeholder="填入你的答案"
+                    :placeholder="t('chat.question.fillBlank')"
                   />
                 </label>
               </div>
@@ -112,7 +112,7 @@
                 v-model="batchFillAnswers[qi]"
                 type="text"
                 class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-                placeholder="填入你的答案"
+                :placeholder="t('chat.question.fillBlank')"
               />
             </div>
             <!-- Choice dispatch -->
@@ -160,7 +160,7 @@
                   {{ q.question_text }}
                 </p>
                 <p class="mb-2 text-xs text-orange-600">
-                  （多选题，可选择多个答案）
+                  {{ t("chat.question.multiSelectHint") }}
                 </p>
                 <button
                   v-for="opt in q.options"
@@ -203,7 +203,7 @@
                   v-model="batchFillAnswers[qi]"
                   type="text"
                   class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-                  placeholder="输入你的答案"
+                  :placeholder="t('chat.placeholder.answer')"
                 />
               </div>
               <div
@@ -216,26 +216,26 @@
                 <button
                   :class="[
                     'flex-1 rounded-lg border px-6 py-4 text-center font-medium transition-all',
-                    batchAnswers[qi] === '正确'
+                    batchAnswers[qi] === trueOption
                       ? 'border-green-500 bg-green-50 text-green-700 ring-2 ring-green-500/20'
                       : 'border-gray-200 bg-white text-gray-700 hover:border-green-300 hover:bg-green-50/50',
                   ]"
-                  @click="batchAnswers[qi] = '正确'"
+                  @click="batchAnswers[qi] = trueOption"
                 >
                   <span class="text-2xl">✓</span>
-                  <span class="ml-2">正确</span>
+                  <span class="ml-2">{{ trueOption }}</span>
                 </button>
                 <button
                   :class="[
                     'flex-1 rounded-lg border px-6 py-4 text-center font-medium transition-all',
-                    batchAnswers[qi] === '错误'
+                    batchAnswers[qi] === falseOption
                       ? 'border-red-500 bg-red-50 text-red-700 ring-2 ring-red-500/20'
                       : 'border-gray-200 bg-white text-gray-700 hover:border-red-300 hover:bg-red-50/50',
                   ]"
-                  @click="batchAnswers[qi] = '错误'"
+                  @click="batchAnswers[qi] = falseOption"
                 >
                   <span class="text-2xl">✗</span>
-                  <span class="ml-2">错误</span>
+                  <span class="ml-2">{{ falseOption }}</span>
                 </button>
               </div>
               <div v-else class="space-y-3">
@@ -249,14 +249,14 @@
                   class="space-y-2"
                 >
                   <label v-for="n in q.blank_count" :key="n" class="block">
-                    <span class="mb-1 block text-xs text-gray-500"
-                      >第 {{ n }} 空</span
-                    >
+                    <span class="mb-1 block text-xs text-gray-500">{{
+                      t("chat.question.blankLabel", { n })
+                    }}</span>
                     <input
                       v-model="batchFillAnswers[qi]"
                       type="text"
                       class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-                      placeholder="填入你的答案"
+                      :placeholder="t('chat.question.fillBlank')"
                     />
                   </label>
                 </div>
@@ -265,7 +265,7 @@
                   v-model="batchFillAnswers[qi]"
                   type="text"
                   class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-                  placeholder="填入你的答案"
+                  :placeholder="t('chat.question.fillBlank')"
                 />
               </div>
             </template>
@@ -278,10 +278,10 @@
             class="btn-primary mt-4 w-full"
             @click="submitBatch"
           >
-            提交全部答案
+            {{ t("chat.question.submitAll") }}
           </button>
           <div v-else class="mt-2 text-center text-xs text-gray-400">
-            请完成所有题目后再提交
+            {{ t("chat.question.completeAll") }}
           </div>
         </template>
 
@@ -294,7 +294,7 @@
 
         <!-- Plain text content -->
         <p v-else-if="message.content" class="whitespace-pre-wrap">
-          {{ message.content }}
+          {{ displayContent }}
         </p>
 
         <!-- Timestamp -->
@@ -315,6 +315,7 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from "vue";
+import { useI18n } from "vue-i18n";
 import type {
   ChatMessage,
   ThinkingStep,
@@ -332,6 +333,7 @@ import HandwritingResponsePlaceholder from "@/components/HandwritingResponsePlac
 import UploadResponsePlaceholder from "@/components/UploadResponsePlaceholder.vue";
 
 const props = defineProps<{ message: ChatMessage }>();
+const { t } = useI18n();
 const emit = defineEmits<{
   answer: [text: string];
   batchSubmit: [answers: BatchAnswerPayload[]];
@@ -341,6 +343,13 @@ const emit = defineEmits<{
 const alignment = computed(() =>
   props.message.role === "user" ? "justify-end" : "justify-start"
 );
+
+const displayContent = computed(() => {
+  if (props.message.source === "system") {
+    return t(props.message.content);
+  }
+  return props.message.content;
+});
 
 const containerClass = computed(() =>
   props.message.role === "user"
@@ -382,19 +391,26 @@ const bubbleClass = computed(() => {
 const roleLabel = computed(() => {
   switch (props.message.role) {
     case "system":
-      return "系统";
+      return t("chat.roles.system");
     case "question":
       return props.message.batch_questions?.length
-        ? `本轮题目（${props.message.batch_questions.length} 题）`
-        : "题目";
+        ? t("chat.roles.batchQuestion", {
+            count: props.message.batch_questions.length,
+          })
+        : t("chat.roles.question");
     case "feedback":
-      return "反馈";
+      return t("chat.roles.feedback");
     case "cold_start":
-      return `冷启动第${props.message.cold_start_data?.round || ""}轮`;
+      return t("chat.roles.coldStart", {
+        round: props.message.cold_start_data?.round || "",
+      });
     default:
       return "";
   }
 });
+
+const trueOption = t("chat.question.trueFalse.true");
+const falseOption = t("chat.question.trueFalse.false");
 
 const badgeClass = computed(() => {
   switch (props.message.role) {

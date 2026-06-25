@@ -1,0 +1,15 @@
+{
+  "title": "Evaluation Report",
+  "subtitle": "The session has ended. Here is a summary of your performance.",
+  "averageScore": "Average (out of 100)",
+  "totalItems": "Total Questions",
+  "hskSuggestion": "HSK Suggestion",
+  "summary": "Session Summary",
+  "notableSentences": "Notable Sentences",
+  "interestAreas": "Interest Areas",
+  "stubbornErrors": "Stubborn Errors",
+  "nextFocus": "Next Focus",
+  "noData": "No data",
+  "backHome": "Back to Home",
+  "newSession": "Start New Evaluation"
+}

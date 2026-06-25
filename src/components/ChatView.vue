@@ -5,11 +5,15 @@
       v-if="autoStopAlert"
       class="mx-auto mt-2 max-w-2xl rounded-lg border border-green-300 bg-green-50 px-4 py-3 text-sm text-green-800"
     >
-      <div class="font-semibold">评测已自动结束</div>
+      <div class="font-semibold">{{ $t("chat.autoStop.title") }}</div>
       <div>{{ autoStopAlert }}</div>
       <div class="mt-1 text-xs text-green-600">
-        准确率 {{ confidence.accuracy }}% · 置信度
-        {{ (confidence.confidence * 100).toFixed(0) }}%
+        {{
+          $t("chat.autoStop.stats", {
+            accuracy: confidence.accuracy,
+            confidence: (confidence.confidence * 100).toFixed(0),
+          })
+        }}
       </div>
     </div>
 
@@ -55,7 +59,7 @@
               class="text-xs text-blue-500 hover:text-blue-700"
               @click="openSidebarFromLive()"
             >
-              查看全部 {{ liveThinking.length }} 条思考过程
+              {{ $t("chat.thinking.viewAll", { count: liveThinking.length }) }}
             </button>
           </div>
         </div>
@@ -78,7 +82,7 @@
               class="rounded border border-red-200 bg-white px-2 py-1 text-xs font-medium text-red-700 hover:bg-red-100"
               @click="retryQuestion"
             >
-              重试
+              {{ $t("common.retry") }}
             </button>
           </div>
         </div>
@@ -93,7 +97,7 @@
             <input
               v-model="userInput"
               type="text"
-              placeholder="请简要回答..."
+              :placeholder="$t('chat.placeholder.coldStart')"
               class="min-w-0 flex-1 rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 sm:px-4"
               @keydown.enter="handleSend"
             />
@@ -102,7 +106,7 @@
               :disabled="!userInput.trim()"
               @click="handleSend"
             >
-              发送
+              {{ $t("common.send") }}
             </button>
           </div>
         </template>
@@ -115,7 +119,7 @@
             <input
               v-model="userInput"
               type="text"
-              placeholder="输入你的回答..."
+              :placeholder="$t('chat.placeholder.answer')"
               class="min-w-0 flex-1 rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 sm:px-4"
               @keydown.enter="handleSend"
             />
@@ -124,22 +128,22 @@
               :disabled="!userInput.trim()"
               @click="handleSend"
             >
-              发送
+              {{ $t("common.send") }}
             </button>
           </div>
           <div
             v-else-if="sessionStore.isWaitingAnswer"
             class="text-center text-sm text-gray-500"
           >
-            请在上方题目中作答
+            {{ $t("chat.answerInQuestion") }}
           </div>
           <div v-else class="text-center text-sm text-gray-500">
-            正在生成题目，请稍候...
+            {{ $t("chat.loading.generating") }}
           </div>
         </template>
         <!-- Loading during cold start -->
         <div v-else class="text-center text-sm text-gray-500">
-          正在准备冷启动问题...
+          {{ $t("chat.loading.coldStart") }}
         </div>
       </div>
     </div>
@@ -158,6 +162,7 @@
 
 <script setup lang="ts">
 import { ref, watch, computed, nextTick, onUnmounted } from "vue";
+import { useI18n } from "vue-i18n";
 import { useSessionStore } from "@/stores/session";
 import {
   streamQuestion,
@@ -186,6 +191,7 @@ import ThinkingSidebar from "@/components/ThinkingSidebar.vue";
 import ConfidenceBar from "@/components/ConfidenceBar.vue";
 
 const sessionStore = useSessionStore();
+const { t } = useI18n();
 const emit = defineEmits<{ profileUpdate: [] }>();
 const chatContainer = ref<HTMLElement | null>(null);
 const userInput = ref("");
@@ -218,10 +224,10 @@ const coldStartRound = ref(0);
 const loadingText = computed(() => {
   if (isColdStart.value)
     return coldStartRound.value > 0
-      ? "正在分析你的回答..."
-      : "正在准备冷启动问题...";
-  if (sessionStore.loadingPhase === "judging") return "正在评估作答...";
-  return "正在生成下一轮题目...";
+      ? t("chat.loading.analyzing")
+      : t("chat.loading.coldStart");
+  if (sessionStore.loadingPhase === "judging") return t("chat.loading.judging");
+  return t("chat.loading.nextRound");
 });
 
 const visibleLiveThinking = computed(() =>
@@ -289,8 +295,8 @@ async function fetchColdStartRound() {
       sessionStore.addMessage({
         id: createClientId(),
         role: "system",
-        content:
-          "冷启动评测完成。根据你的表现，系统已初步了解你的中文水平。接下来进入正式评测。",
+        source: "system",
+        content: "chat.coldStart.complete",
         timestamp: new Date().toISOString(),
       });
       scrollToBottom();
@@ -320,7 +326,8 @@ async function fetchColdStartRound() {
     liveThinking.value = [];
     scrollToLatest();
   } catch (e) {
-    sessionStore.error = e instanceof Error ? e.message : "冷启动问题获取失败";
+    sessionStore.error =
+      e instanceof Error ? e.message : t("chat.coldStart.questionFailed");
     liveThinking.value = [];
   } finally {
     sessionStore.isLoading = false;
@@ -359,7 +366,7 @@ async function handleColdStartAnswer(answer: string) {
     sessionStore.addMessage({
       id: createClientId(),
       role: "feedback",
-      content: resp.feedback || "作答已记录。",
+      content: resp.feedback || t("chat.feedback.recorded"),
       timestamp: new Date().toISOString(),
       thinking_steps: toThinkingSteps(liveThinking.value),
     });
@@ -370,9 +377,10 @@ async function handleColdStartAnswer(answer: string) {
       sessionStore.addMessage({
         id: createClientId(),
         role: "system",
+        source: "system",
         content:
           ((resp as Record<string, unknown>).message as string) ||
-          "冷启动评测完成，即将进入正式评测。",
+          "chat.coldStart.completeFallback",
         timestamp: new Date().toISOString(),
       });
       scrollToBottom();
@@ -385,7 +393,8 @@ async function handleColdStartAnswer(answer: string) {
 
     liveThinking.value = [];
   } catch (e) {
-    sessionStore.error = e instanceof Error ? e.message : "冷启动答案提交失败";
+    sessionStore.error =
+      e instanceof Error ? e.message : t("chat.coldStart.answerFailed");
     liveThinking.value = [];
   } finally {
     sessionStore.isLoading = false;
@@ -438,9 +447,9 @@ async function handleAnswer(answer: string) {
         feedback ||
         (isCorrect !== undefined
           ? isCorrect
-            ? "回答正确！"
-            : "回答不正确。"
-          : "回答已记录。"),
+            ? t("chat.feedback.correct")
+            : t("chat.feedback.incorrect")
+          : t("chat.feedback.recorded")),
       timestamp: new Date().toISOString(),
       thinking_steps: toThinkingSteps(liveThinking.value),
     });
@@ -458,7 +467,8 @@ async function handleAnswer(answer: string) {
 
     liveThinking.value = [];
   } catch (e) {
-    sessionStore.error = e instanceof Error ? e.message : "提交答案失败";
+    sessionStore.error =
+      e instanceof Error ? e.message : t("chat.answer.failed");
     liveThinking.value = [];
   } finally {
     sessionStore.isLoading = false;
@@ -550,7 +560,7 @@ async function fetchNextQuestion(requestId?: string) {
       sessionStore.addMessage({
         id: createClientId(),
         role: "question",
-        content: "题目生成异常",
+        content: t("chat.error.generation"),
         timestamp: new Date().toISOString(),
       });
       sessionStore.isWaitingAnswer = false;
@@ -561,7 +571,8 @@ async function fetchNextQuestion(requestId?: string) {
     questionRetryRequestId.value = null;
     liveThinking.value = [];
   } catch (e) {
-    sessionStore.error = e instanceof Error ? e.message : "获取题目失败";
+    sessionStore.error =
+      e instanceof Error ? e.message : t("chat.answer.fetchFailed");
     questionRetryRequestId.value = questionRequestId;
     liveThinking.value = [];
   } finally {
@@ -584,13 +595,18 @@ async function handleBatchSubmit(answers: BatchAnswerPayload[]) {
     .map((a) => {
       const label = a.response_mode
         ? {
-            speech: "语音作答:（已提交）",
-            handwriting: "手写作答:（已提交）",
-            upload: "上传作答:（已提交）",
+            speech: t("chat.responseMode.speech"),
+            handwriting: t("chat.responseMode.handwriting"),
+            upload: t("chat.responseMode.upload"),
           }[a.response_mode] ||
-          `第${a.question_index + 1}题（${a.response_mode}）: ${a.answer}`
-        : `第${a.question_index + 1}题: ${a.answer}`;
-      return a.answer ? `第${a.question_index + 1}题: ${a.answer}` : label;
+          t("chat.question.number", { n: a.question_index + 1 }) +
+            ` (${a.response_mode}): ${a.answer}`
+        : t("chat.question.number", { n: a.question_index + 1 }) +
+          `: ${a.answer}`;
+      return a.answer
+        ? t("chat.question.number", { n: a.question_index + 1 }) +
+            `: ${a.answer}`
+        : label;
     })
     .join("\n");
   sessionStore.addMessage({
@@ -635,7 +651,7 @@ async function handleBatchSubmit(answers: BatchAnswerPayload[]) {
       sessionStore.addMessage({
         id: createClientId(),
         role: "feedback",
-        content: `${dimText}第${answers[i]?.question_index + 1}题: ${feedback || (isCorrect !== undefined ? (isCorrect ? "回答正确！" : "回答不正确。") : "回答已记录。")}`,
+        content: `${dimText}${t("chat.question.number", { n: answers[i]?.question_index + 1 })}: ${feedback || (isCorrect !== undefined ? (isCorrect ? t("chat.feedback.correct") : t("chat.feedback.incorrect")) : t("chat.feedback.recorded"))}`,
         timestamp: new Date().toISOString(),
         thinking_steps:
           i === 0 && thinkingSteps.length > 0 ? thinkingSteps : undefined,
@@ -655,7 +671,8 @@ async function handleBatchSubmit(answers: BatchAnswerPayload[]) {
       await fetchNextQuestion();
     }
   } catch (e) {
-    sessionStore.error = e instanceof Error ? e.message : "提交答案失败";
+    sessionStore.error =
+      e instanceof Error ? e.message : t("chat.answer.failed");
     liveThinking.value = [];
   } finally {
     sessionStore.isLoading = false;

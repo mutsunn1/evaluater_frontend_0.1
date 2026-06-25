@@ -1,3 +1,10 @@
+<script setup lang="ts">
+import { useI18n } from "vue-i18n";
+import type { ConfidenceStats } from "@/types";
+defineProps<{ stats: ConfidenceStats }>();
+const { t } = useI18n();
+</script>
+
 <template>
   <div
     v-if="stats.total_rounds > 0 || stats.sample_size > 0"
@@ -6,10 +13,13 @@
     <div class="mx-auto max-w-2xl space-y-2">
       <!-- Round progress -->
       <div class="flex items-center justify-between text-xs text-gray-500">
-        <span class="font-medium">进度</span>
-        <span class="font-semibold"
-          >{{ stats.total_rounds }} / {{ stats.max_rounds }} 轮</span
-        >
+        <span class="font-medium">{{ t("chat.confidence.progress") }}</span>
+        <span class="font-semibold">{{
+          t("chat.confidence.round", {
+            current: stats.total_rounds,
+            max: stats.max_rounds,
+          })
+        }}</span>
       </div>
       <div class="h-2 overflow-hidden rounded-full bg-gray-200">
         <div
@@ -35,27 +45,48 @@
       >
         <div class="flex items-center gap-1">
           <span class="w-2 h-2 rounded-full bg-purple-500" />
-          <span>词汇 {{ stats.dimension_rounds?.vocabulary || 0 }}轮</span>
+          <span
+            >{{ t("profile.skills.vocabulary") }}
+            {{ stats.dimension_rounds?.vocabulary || 0
+            }}{{ t("chat.question.roundUnit") }}</span
+          >
         </div>
         <div class="flex items-center gap-1">
           <span class="w-2 h-2 rounded-full bg-green-500" />
-          <span>语法 {{ stats.dimension_rounds?.grammar || 0 }}轮</span>
+          <span
+            >{{ t("profile.skills.grammar") }}
+            {{ stats.dimension_rounds?.grammar || 0
+            }}{{ t("chat.question.roundUnit") }}</span
+          >
         </div>
         <div class="flex items-center gap-1">
           <span class="w-2 h-2 rounded-full bg-orange-500" />
-          <span>阅读 {{ stats.dimension_rounds?.reading || 0 }}轮</span>
+          <span
+            >{{ t("profile.skills.reading") }}
+            {{ stats.dimension_rounds?.reading || 0
+            }}{{ t("chat.question.roundUnit") }}</span
+          >
         </div>
         <div class="flex items-center gap-1">
           <span class="w-2 h-2 rounded-full bg-pink-500" />
-          <span>听力 {{ stats.dimension_rounds?.listening || 0 }}轮</span>
+          <span
+            >{{ t("profile.skills.listening") }}
+            {{ stats.dimension_rounds?.listening || 0
+            }}{{ t("chat.question.roundUnit") }}</span
+          >
         </div>
         <div class="flex items-center gap-1">
           <span class="w-2 h-2 rounded-full bg-cyan-500" />
-          <span>口语 {{ stats.dimension_rounds?.speaking || 0 }}轮</span>
+          <span
+            >{{ t("profile.skills.speaking") }}
+            {{ stats.dimension_rounds?.speaking || 0
+            }}{{ t("chat.question.roundUnit") }}</span
+          >
         </div>
         <div class="sm:ml-auto">
           <span
-            >正确率 {{ stats.accuracy }}% · 置信度
+            >{{ t("chat.confidence.accuracy") }} {{ stats.accuracy }}% ·
+            {{ t("chat.confidence.confidence") }}
             {{ (stats.confidence * 100).toFixed(0) }}%</span
           >
         </div>
@@ -66,14 +97,9 @@
         <span
           class="inline-flex animate-pulse rounded-full bg-green-100 px-3 py-1 text-xs font-medium text-green-700"
         >
-          ✓ 评测完成
+          ✓ {{ t("chat.confidence.complete") }}
         </span>
       </div>
     </div>
   </div>
 </template>
-
-<script setup lang="ts">
-import type { ConfidenceStats } from "@/types";
-defineProps<{ stats: ConfidenceStats }>();
-</script>

@@ -360,12 +360,12 @@ describe("ChatView 实时思考气泡", () => {
 
     const openThinkingButton = wrapper
       .findAll("button")
-      .find((button) => button.text().includes("查看全部"));
+      .find((button) => button.text().includes("View all"));
     expect(openThinkingButton).toBeTruthy();
     await openThinkingButton!.trigger("click");
     await flushPromises();
 
-    expect(wrapper.text()).toContain("思考过程");
+    expect(wrapper.text()).toContain("Thinking Process");
     expect(wrapper.text()).toContain("质检智能体");
     expect(wrapper.text()).toContain("grammar出题");
   });
@@ -539,10 +539,10 @@ describe("ChatView mobile bottom input", () => {
     const text = wrapper.text();
     const input = wrapper.find("input");
     expect(input.exists()).toBe(true);
-    expect(input.attributes("placeholder")).toBe("输入你的回答...");
+    expect(input.attributes("placeholder")).toBe("Enter your answer...");
 
     // Send button should exist
-    expect(text).toContain("发送");
+    expect(text).toContain("Send");
   });
 
   it("shows waiting message when isWaitingAnswer is true", async () => {
@@ -571,7 +571,7 @@ describe("ChatView mobile bottom input", () => {
     const wrapper = mountChatView(pinia);
     await flushPromises();
 
-    expect(wrapper.text()).toContain("请在上方题目中作答");
+    expect(wrapper.text()).toContain("Please answer in the question above");
   });
 
   it("shows loading message when isLoading is true", async () => {
@@ -599,7 +599,7 @@ describe("ChatView mobile bottom input", () => {
     const wrapper = mountChatView(pinia);
     await flushPromises();
 
-    expect(wrapper.text()).toContain("正在生成题目");
+    expect(wrapper.text()).toContain("Generating questions, please wait...");
   });
 
   it("renders input for cold start questions", async () => {
@@ -629,6 +629,6 @@ describe("ChatView mobile bottom input", () => {
 
     const input = wrapper.find("input");
     expect(input.exists()).toBe(true);
-    expect(input.attributes("placeholder")).toBe("请简要回答...");
+    expect(input.attributes("placeholder")).toBe("Please answer briefly...");
   });
 });

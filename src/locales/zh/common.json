@@ -1,0 +1,19 @@
+{
+  "appTitle": "中文水平评测",
+  "appTitleFull": "中文水平评测系统",
+  "appSubtitle": "基于多智能体系统的中文能力评估",
+  "userId": "用户 ID",
+  "userIdPlaceholder": "输入您的用户 ID",
+  "startEvaluation": "开始评测",
+  "loggingIn": "正在登录...",
+  "login": "登录",
+  "logout": "退出",
+  "send": "发送",
+  "retry": "重试",
+  "loading": "加载中...",
+  "endEvaluation": "结束评测",
+  "openProfile": "打开用户资料",
+  "error": {
+    "backend": "连接后端失败：{message}"
+  }
+}

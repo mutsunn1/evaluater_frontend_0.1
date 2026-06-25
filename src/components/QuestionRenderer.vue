@@ -62,12 +62,13 @@
     </template>
     <!-- Fallback: plain text -->
     <p v-else class="text-gray-700">
-      {{ itemData.question_text || "（题目加载中...）" }}
+      {{ itemData.question_text || t("chat.loading") }}
     </p>
   </div>
 </template>
 
 <script setup lang="ts">
+import { useI18n } from "vue-i18n";
 import type { ItemData } from "@/types";
 import MultipleChoice from "@/components/MultipleChoice.vue";
 import TrueFalse from "@/components/TrueFalse.vue";
@@ -76,6 +77,7 @@ import ReadingComprehension from "@/components/ReadingComprehension.vue";
 import SpeechRecorder from "@/components/SpeechRecorder.vue";
 import MediaPromptBlock from "@/components/MediaPromptBlock.vue";
 
+const { t } = useI18n();
 defineProps<{ itemData: ItemData; sessionId?: string }>();
 const emit = defineEmits<{ answer: [text: string] }>();
 

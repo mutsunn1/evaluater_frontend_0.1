@@ -1,0 +1,15 @@
+{
+  "title": "评测报告",
+  "subtitle": "本次评测已结束，以下是你的表现总结。",
+  "averageScore": "平均分（满分 100）",
+  "totalItems": "总题数",
+  "hskSuggestion": "HSK 建议",
+  "summary": "评测总结",
+  "notableSentences": "精彩句子",
+  "interestAreas": "兴趣领域",
+  "stubbornErrors": "顽固错误",
+  "nextFocus": "建议关注",
+  "noData": "暂无数据",
+  "backHome": "返回主页",
+  "newSession": "开始新评测"
+}

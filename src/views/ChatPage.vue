@@ -13,7 +13,7 @@
           <button
             data-testid="mobile-profile-btn"
             class="flex h-9 w-9 items-center justify-center rounded-lg text-gray-600 hover:bg-gray-100 md:hidden"
-            aria-label="打开用户资料"
+            :aria-label="$t('common.openProfile')"
             @click="mobileProfileOpen = !mobileProfileOpen"
           >
             <svg
@@ -30,7 +30,7 @@
             </svg>
           </button>
           <h1 class="truncate text-base font-semibold text-gray-900 sm:text-lg">
-            中文水平评测
+            {{ $t("common.appTitle") }}
           </h1>
           <span
             class="rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-medium text-blue-700"
@@ -40,17 +40,26 @@
         </div>
         <div class="flex shrink-0 items-center gap-1.5 sm:gap-2">
           <button
+            data-testid="language-switcher"
+            class="rounded-lg px-2 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-100"
+            @click="
+              localeStore.setLocale(localeStore.locale === 'en' ? 'zh' : 'en')
+            "
+          >
+            {{ localeStore.locale === "en" ? "中文" : "EN" }}
+          </button>
+          <button
             v-if="sessionStore.sessionId && !sessionStore.sessionResult"
             class="btn-danger px-2.5 py-2 text-xs sm:px-4"
             @click="handleEndSession"
           >
-            结束评测
+            {{ $t("common.endEvaluation") }}
           </button>
           <button
             class="btn-secondary px-2.5 py-2 text-xs sm:px-4"
             @click="handleLogout"
           >
-            退出
+            {{ $t("common.logout") }}
           </button>
         </div>
       </header>
@@ -63,7 +72,7 @@
       >
         <div class="bg-gray-900 text-white">
           <div v-if="fetchFailed" class="px-4 py-3 text-xs text-red-300">
-            无法加载用户资料，请检查后端连接是否正常。
+            {{ $t("profile.loadFailed") }}
           </div>
           <div class="space-y-2 px-4 py-3">
             <!-- HSK Level -->
@@ -76,7 +85,11 @@
                 }}
               </div>
               <div class="text-xs text-gray-400">
-                {{ mobileProfile.hsk_level > 1 ? "当前等级" : "等待评测" }}
+                {{
+                  mobileProfile.hsk_level > 1
+                    ? $t("profile.currentLevel")
+                    : $t("profile.waitingEvaluation")
+                }}
               </div>
             </div>
 
@@ -84,7 +97,9 @@
             <div class="grid grid-cols-2 gap-x-4 gap-y-1.5">
               <div v-for="skill in skills" :key="skill.key" class="space-y-0.5">
                 <div class="flex items-center justify-between text-xs">
-                  <span class="text-gray-400">{{ skill.label }}</span>
+                  <span class="text-gray-400">{{
+                    $t(`profile.skills.${skill.key}`)
+                  }}</span>
                   <span class="font-mono text-gray-300">{{
                     mobileHasData
                       ? (mobileProfile.skill_levels?.[skill.key] || 0) + "%"
@@ -121,12 +136,20 @@
               <span
                 v-if="mobileProfile.strengths?.length"
                 class="text-green-300"
-                >已掌握: {{ mobileProfile.strengths.join("、") }}</span
+                >{{
+                  $t("profile.mastered", {
+                    items: mobileProfile.strengths.join("、"),
+                  })
+                }}</span
               >
               <span
                 v-if="mobileProfile.next_focus?.length"
                 class="text-yellow-300"
-                >建议关注: {{ mobileProfile.next_focus.join("、") }}</span
+                >{{
+                  $t("profile.suggestedFocus", {
+                    items: mobileProfile.next_focus.join("、"),
+                  })
+                }}</span
               >
             </div>
           </div>
@@ -157,8 +180,11 @@ import { endSession, getConfidence, getUserProfile } from "@/api";
 import { buildSessionResult, createDefaultConfidence } from "@/utils/session";
 import type { UserProfileData } from "@/types";
 
+import { useLocaleStore } from "@/stores/locale";
+
 const auth = useAuthStore();
 const sessionStore = useSessionStore();
+const localeStore = useLocaleStore();
 const router = useRouter();
 const profileSidebar = ref<InstanceType<typeof UserProfileSidebar> | null>(
   null
@@ -186,15 +212,14 @@ const mobileProfile = ref<UserProfileData>({
 
 const skills: {
   key: keyof NonNullable<UserProfileData["skill_levels"]>;
-  label: string;
   color: string;
 }[] = [
-  { key: "hsk", label: "综合", color: "bg-blue-500" },
-  { key: "vocabulary", label: "词汇", color: "bg-purple-500" },
-  { key: "grammar", label: "语法", color: "bg-green-500" },
-  { key: "reading", label: "阅读", color: "bg-orange-500" },
-  { key: "listening", label: "听力", color: "bg-pink-500" },
-  { key: "speaking", label: "口语", color: "bg-cyan-500" },
+  { key: "hsk", color: "bg-blue-500" },
+  { key: "vocabulary", color: "bg-purple-500" },
+  { key: "grammar", color: "bg-green-500" },
+  { key: "reading", color: "bg-orange-500" },
+  { key: "listening", color: "bg-pink-500" },
+  { key: "speaking", color: "bg-cyan-500" },
 ];
 
 const mobileHasData = computed(() => {

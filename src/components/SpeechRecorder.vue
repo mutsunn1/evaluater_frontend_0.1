@@ -3,7 +3,7 @@
     <!-- Idle: ready to record -->
     <template v-if="state === 'idle'">
       <p class="text-sm text-gray-600 mb-3 text-center">
-        录制你的口头回答（最长60秒）
+        {{ t("chat.speech.hint") }}
       </p>
       <div class="text-center">
         <button
@@ -11,7 +11,7 @@
           data-testid="speech-record-btn"
           @click="startRecording"
         >
-          🎙️ 开始录音
+          🎙️ {{ t("chat.speech.start") }}
         </button>
       </div>
     </template>
@@ -21,7 +21,9 @@
       <div class="flex items-center justify-between mb-2">
         <span class="inline-flex items-center gap-1.5">
           <span class="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-          <span class="text-sm font-medium text-red-600">录音中</span>
+          <span class="text-sm font-medium text-red-600">{{
+            t("chat.speech.recording")
+          }}</span>
         </span>
         <span class="text-sm text-gray-500">{{ elapsedDisplay }}</span>
       </div>
@@ -36,14 +38,16 @@
         data-testid="speech-stop-btn"
         @click="stopRecording"
       >
-        ⏹ 停止录音
+        ⏹ {{ t("chat.speech.stop") }}
       </button>
     </template>
 
     <!-- Recorded: can play, delete, or upload -->
     <template v-else-if="state === 'recorded'">
       <div class="flex items-center justify-between mb-3">
-        <span class="text-sm font-medium text-gray-700">录音完成</span>
+        <span class="text-sm font-medium text-gray-700">{{
+          t("chat.speech.recorded")
+        }}</span>
         <span class="text-sm text-gray-500">{{ elapsedDisplay }}</span>
       </div>
       <div class="flex gap-2">
@@ -53,7 +57,7 @@
           data-testid="speech-play-btn"
           @click="playRecording"
         >
-          ▶ 试听
+          ▶ {{ t("chat.speech.play") }}
         </button>
         <button
           v-else
@@ -61,21 +65,21 @@
           data-testid="speech-pause-btn"
           @click="stopPlayback"
         >
-          ⏸ 停止
+          ⏸ {{ t("chat.speech.pause") }}
         </button>
         <button
           class="rounded-lg border border-red-300 px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50 transition-colors"
           data-testid="speech-delete-btn"
           @click="deleteRecording"
         >
-          🗑 重录
+          🗑 {{ t("chat.speech.reRecord") }}
         </button>
         <button
           class="rounded-lg bg-green-500 px-3 py-2 text-sm font-medium text-white hover:bg-green-600 transition-colors"
           data-testid="speech-upload-btn"
           @click="uploadRecording"
         >
-          上传
+          {{ t("chat.speech.upload") }}
         </button>
       </div>
       <audio
@@ -89,14 +93,18 @@
     <!-- Uploading -->
     <template v-else-if="state === 'uploading'">
       <div class="text-center py-2">
-        <span class="text-sm text-gray-500">正在上传并转写...</span>
+        <span class="text-sm text-gray-500">{{
+          t("chat.speech.uploading")
+        }}</span>
       </div>
     </template>
 
     <!-- Transcribed -->
     <template v-else-if="state === 'transcribed'">
       <div class="mb-3 rounded bg-gray-50 p-3">
-        <p class="text-xs text-gray-400 mb-1">转写结果（只读核对）</p>
+        <p class="text-xs text-gray-400 mb-1">
+          {{ t("chat.speech.transcriptTitle") }}
+        </p>
         <p class="text-sm text-gray-800 whitespace-pre-wrap">
           {{ transcript }}
         </p>
@@ -107,14 +115,14 @@
           data-testid="speech-rerecord-btn"
           @click="deleteRecording"
         >
-          重录
+          {{ t("chat.speech.reRecord") }}
         </button>
         <button
           class="flex-1 rounded-lg bg-green-500 px-3 py-2 text-sm font-medium text-white hover:bg-green-600 transition-colors"
           data-testid="speech-confirm-btn"
           @click="confirmTranscript"
         >
-          确认提交
+          {{ t("chat.speech.confirm") }}
         </button>
       </div>
     </template>
@@ -127,13 +135,13 @@
           class="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors"
           @click="state = 'recorded'"
         >
-          重试上传
+          {{ t("chat.speech.retryUpload") }}
         </button>
         <button
           class="flex-1 rounded-lg border border-red-300 px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50 transition-colors"
           @click="deleteRecording"
         >
-          重录
+          {{ t("chat.speech.reRecord") }}
         </button>
       </div>
     </template>
@@ -142,6 +150,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onBeforeUnmount } from "vue";
+import { useI18n } from "vue-i18n";
 import { uploadSpeechRecording } from "@/api";
 
 const props = defineProps<{
@@ -152,6 +161,8 @@ const props = defineProps<{
 const emit = defineEmits<{
   answer: [assetId: string];
 }>();
+
+const { t } = useI18n();
 
 type RecorderState =
   | "idle"
@@ -213,7 +224,7 @@ async function startRecording() {
       }
     }, 1000);
   } catch (_err) {
-    error.value = "无法访问麦克风，请检查浏览器权限设置";
+    error.value = t("chat.speech.micError");
     state.value = "failed";
   }
 }
@@ -273,7 +284,7 @@ async function uploadRecording() {
 
   try {
     if (!props.sessionId) {
-      error.value = "缺少会话ID，无法上传";
+      error.value = t("chat.speech.missingSession");
       state.value = "failed";
       return;
     }
@@ -288,11 +299,11 @@ async function uploadRecording() {
       transcript.value = result.transcript || "";
       state.value = "transcribed";
     } else {
-      error.value = result.error || "转写失败，请重试";
+      error.value = result.error || t("chat.speech.transcribeFailed");
       state.value = "failed";
     }
   } catch (err: any) {
-    error.value = err?.message || "上传失败，请检查网络后重试";
+    error.value = err?.message || t("chat.speech.uploadFailed");
     state.value = "failed";
   }
 }
