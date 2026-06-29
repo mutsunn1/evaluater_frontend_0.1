@@ -54,7 +54,7 @@
               />
             </svg>
             <span class="text-sm font-semibold text-gray-700">{{
-              step.agent
+              displayAgent(step)
             }}</span>
           </div>
           <p class="whitespace-pre-wrap text-xs leading-relaxed text-gray-600">
@@ -68,9 +68,16 @@
 
 <script setup lang="ts">
 import type { ThinkingStep } from "@/types";
+import { useI18n } from "vue-i18n";
+import { getTranslatedThinkingLabel } from "@/utils/thinking-labels";
 
-defineProps<{ steps: ThinkingStep[]; isOpen: boolean }>();
+const props = defineProps<{ steps: ThinkingStep[]; isOpen: boolean }>();
 const emit = defineEmits<{ close: [] }>();
+const { t } = useI18n();
+
+function displayAgent(step: ThinkingStep): string {
+  return getTranslatedThinkingLabel(step.agent, t);
+}
 
 function close() {
   emit("close");

@@ -348,6 +348,18 @@ const displayContent = computed(() => {
   if (props.message.source === "system") {
     return t(props.message.content);
   }
+  if (
+    props.message.role === "cold_start" &&
+    props.message.cold_start_data?.questionKey
+  ) {
+    return t(props.message.cold_start_data.questionKey);
+  }
+  if (
+    props.message.role === "feedback" &&
+    props.message.content.startsWith("chat.feedback.")
+  ) {
+    return t(props.message.content);
+  }
   return props.message.content;
 });
 
@@ -401,9 +413,11 @@ const roleLabel = computed(() => {
     case "feedback":
       return t("chat.roles.feedback");
     case "cold_start":
-      return t("chat.roles.coldStart", {
-        round: props.message.cold_start_data?.round || "",
-      });
+      return props.message.cold_start_data?.labelKey
+        ? t(props.message.cold_start_data.labelKey)
+        : t("chat.roles.coldStart", {
+            round: props.message.cold_start_data?.round || "",
+          });
     default:
       return "";
   }

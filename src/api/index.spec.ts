@@ -1,5 +1,7 @@
-import { describe, expect, it, vi, afterEach } from "vitest";
-import { batchSubmitAnswer, streamQuestion } from "./index";
+import { describe, expect, it, vi, afterEach, beforeEach } from "vitest";
+import { batchSubmitAnswer, streamQuestion, createSession } from "./index";
+import { createPinia, setActivePinia } from "pinia";
+import { useLocaleStore } from "@/stores/locale";
 
 function buildSseResponse(body: string) {
   return new Response(
@@ -28,6 +30,10 @@ function buildChunkedSseResponse(chunks: string[]) {
 }
 
 describe("streamQuestion", () => {
+  beforeEach(() => {
+    setActivePinia(createPinia());
+  });
+
   afterEach(() => {
     vi.restoreAllMocks();
   });
@@ -50,7 +56,7 @@ describe("streamQuestion", () => {
     await streamQuestion("session-1", vi.fn(), undefined, "request-1");
 
     expect(fetchMock).toHaveBeenCalledWith(
-      "/api/v1/sessions/session-1/question?request_id=request-1",
+      "/api/v1/sessions/session-1/question?request_id=request-1&locale=en",
       { signal: undefined }
     );
   });
@@ -159,7 +165,7 @@ describe("batchSubmitAnswer", () => {
     );
 
     expect(fetchMock).toHaveBeenCalledWith(
-      "/api/v1/sessions/session-1/batch_answer",
+      "/api/v1/sessions/session-1/batch_answer?locale=en",
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -169,6 +175,48 @@ describe("batchSubmitAnswer", () => {
         }),
         signal: undefined,
       }
+    );
+  });
+});
+
+describe("createSession", () => {
+  beforeEach(() => {
+    setActivePinia(createPinia());
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("passes current locale in query string", async () => {
+    const localeStore = useLocaleStore();
+    localeStore.setLocale("zh");
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ session_id: "s1", user_id: "u1", hsk_level: 1 }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await createSession("u1");
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/v1/sessions?user_id=u1&locale=zh",
+      expect.anything()
+    );
+  });
+
+  it("defaults locale to en", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ session_id: "s2", user_id: "u2", hsk_level: 1 }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await createSession("u2");
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/v1/sessions?user_id=u2&locale=en",
+      expect.anything()
     );
   });
 });

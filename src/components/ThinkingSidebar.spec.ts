@@ -5,12 +5,12 @@ import type { ThinkingStep } from "@/types";
 
 const steps: ThinkingStep[] = [
   {
-    agent: "题目摘要",
+    agent: "Question Summary",
     agent_key: "thinking_coordinator",
     output: "系统正在选择适合当前水平的语法题。",
   },
   {
-    agent: "出题智能体",
+    agent: "Grammar Question",
     agent_key: "grammar_generator",
     output: "本题围绕把字句的语序、结构和语义是否成立进行辨析。",
   },
@@ -73,14 +73,14 @@ describe("ThinkingSidebar mobile full-screen", () => {
     expect(wrapper.emitted("close")).toBeTruthy();
   });
 
-  it("renders all thinking step cards with agent names and output", () => {
+  it("renders all thinking step cards with translated agent names and output", () => {
     const wrapper = mount(ThinkingSidebar, {
       props: { steps, isOpen: true },
     });
 
     expect(wrapper.text()).toContain("Thinking Process");
-    expect(wrapper.text()).toContain("题目摘要");
-    expect(wrapper.text()).toContain("出题智能体");
+    expect(wrapper.text()).toContain("Question Summary");
+    expect(wrapper.text()).toContain("Grammar Question");
     expect(wrapper.text()).toContain("系统正在选择适合当前水平的语法题。");
     expect(wrapper.text()).toContain(
       "本题围绕把字句的语序、结构和语义是否成立进行辨析。"

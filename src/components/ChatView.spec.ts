@@ -335,19 +335,19 @@ describe("ChatView 实时思考气泡", () => {
         ],
         thinking_steps: [
           {
-            agent: "题目摘要",
+            agent: "Question Summary",
             agent_key: "system",
             output: "本题围绕把字句的语序、结构和语义是否成立进行辨析。",
           },
           {
-            agent: "质检智能体",
+            agent: "Quality Check Agent",
             agent_key: "item_qa_agent",
-            output: "[grammar] 题目质量检查完成。",
+            output: "[grammar] Question quality check complete.",
           },
           {
-            agent: "grammar出题",
+            agent: "Grammar Question",
             agent_key: "grammar_generator",
-            output: "[grammar] 题目生成完成。",
+            output: "[grammar] Question generated.",
           },
         ],
       },
@@ -366,8 +366,8 @@ describe("ChatView 实时思考气泡", () => {
     await flushPromises();
 
     expect(wrapper.text()).toContain("Thinking Process");
-    expect(wrapper.text()).toContain("质检智能体");
-    expect(wrapper.text()).toContain("grammar出题");
+    expect(wrapper.text()).toContain("Quality Check Agent");
+    expect(wrapper.text()).toContain("Grammar Question");
   });
 });
 
@@ -411,7 +411,9 @@ describe("ChatView 批量提交幂等标识", () => {
     store.isWaitingAnswer = true;
 
     vi.mocked(batchSubmitAnswer).mockResolvedValue({
-      results: [{ item_id: 1, is_correct: true, feedback: "回答正确！" }],
+      results: [
+        { item_id: 1, is_correct: true, feedback: "chat.feedback.correct" },
+      ],
       confidence: 0.2,
       accuracy: 100,
       auto_stop: false,

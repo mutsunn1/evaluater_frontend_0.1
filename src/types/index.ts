@@ -82,7 +82,12 @@ export interface ChatMessage {
   item_data?: ItemData;
   batch_questions?: ItemData[];
   session_id?: string;
-  cold_start_data?: { round: number; label: string };
+  cold_start_data?: {
+    round: number;
+    label: string;
+    labelKey?: string;
+    questionKey?: string;
+  };
   timestamp: string;
   thinking_steps?: ThinkingStep[];
 }

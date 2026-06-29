@@ -317,7 +317,12 @@ async function fetchColdStartRound() {
       id: createClientId(),
       role: "cold_start",
       content: q.question,
-      cold_start_data: { round: q.round, label: q.label },
+      cold_start_data: {
+        round: q.round,
+        label: q.label,
+        labelKey: q.label,
+        questionKey: q.question,
+      },
       timestamp: new Date().toISOString(),
       thinking_steps: [...toThinkingSteps(liveThinking.value)],
     });
@@ -366,7 +371,7 @@ async function handleColdStartAnswer(answer: string) {
     sessionStore.addMessage({
       id: createClientId(),
       role: "feedback",
-      content: resp.feedback || t("chat.feedback.recorded"),
+      content: resp.feedback || "chat.coldStart.feedback.recorded",
       timestamp: new Date().toISOString(),
       thinking_steps: toThinkingSteps(liveThinking.value),
     });
@@ -447,9 +452,9 @@ async function handleAnswer(answer: string) {
         feedback ||
         (isCorrect !== undefined
           ? isCorrect
-            ? t("chat.feedback.correct")
-            : t("chat.feedback.incorrect")
-          : t("chat.feedback.recorded")),
+            ? "chat.feedback.correct"
+            : "chat.feedback.incorrect"
+          : "chat.feedback.recorded"),
       timestamp: new Date().toISOString(),
       thinking_steps: toThinkingSteps(liveThinking.value),
     });
@@ -648,10 +653,17 @@ async function handleBatchSubmit(answers: BatchAnswerPayload[]) {
         : "";
       const dimText = dim ? `[${dim}] ` : "";
 
+      const fallbackKey =
+        isCorrect !== undefined
+          ? isCorrect
+            ? "chat.feedback.correct"
+            : "chat.feedback.incorrect"
+          : "chat.feedback.recorded";
+
       sessionStore.addMessage({
         id: createClientId(),
         role: "feedback",
-        content: `${dimText}${t("chat.question.number", { n: answers[i]?.question_index + 1 })}: ${feedback || (isCorrect !== undefined ? (isCorrect ? t("chat.feedback.correct") : t("chat.feedback.incorrect")) : t("chat.feedback.recorded"))}`,
+        content: `${dimText}${t("chat.question.number", { n: answers[i]?.question_index + 1 })}: ${feedback || fallbackKey}`,
         timestamp: new Date().toISOString(),
         thinking_steps:
           i === 0 && thinkingSteps.length > 0 ? thinkingSteps : undefined,

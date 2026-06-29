@@ -1,3 +1,4 @@
+import { useLocaleStore } from "@/stores/locale";
 import type { ItemData, BatchAnswerPayload } from "@/types";
 
 const BASE_URL = import.meta.env.VITE_API_URL || "";
@@ -84,8 +85,9 @@ async function readSseEvents(
 export async function createSession(
   userId: string
 ): Promise<{ session_id: string; user_id: string; hsk_level: number }> {
+  const locale = useLocaleStore().locale;
   return fetchJson(
-    `${BASE_URL}/api/v1/sessions?user_id=${encodeURIComponent(userId)}`,
+    `${BASE_URL}/api/v1/sessions?user_id=${encodeURIComponent(userId)}&locale=${encodeURIComponent(locale)}`,
     { method: "POST" }
   );
 }
@@ -99,9 +101,10 @@ export async function streamQuestion(
   requestId?: string,
   onQuestion?: (question: ItemData) => void
 ): Promise<{ questions: ItemData[]; batch_id: string }> {
+  const locale = useLocaleStore().locale;
   const requestQuery = requestId
-    ? `?request_id=${encodeURIComponent(requestId)}`
-    : "";
+    ? `?request_id=${encodeURIComponent(requestId)}&locale=${encodeURIComponent(locale)}`
+    : `?locale=${encodeURIComponent(locale)}`;
   const resp = await fetch(
     `${BASE_URL}/api/v1/sessions/${sessionId}/question${requestQuery}`,
     { signal }
@@ -167,7 +170,7 @@ export async function batchSubmitAnswer(
   stop_reason?: string;
 }> {
   const resp = await fetch(
-    `${BASE_URL}/api/v1/sessions/${sessionId}/batch_answer`,
+    `${BASE_URL}/api/v1/sessions/${sessionId}/batch_answer?locale=${encodeURIComponent(useLocaleStore().locale)}`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -259,7 +262,7 @@ export async function streamSubmitAnswer(
   stop_reason?: string;
 }> {
   const resp = await fetch(
-    `${BASE_URL}/api/v1/sessions/${sessionId}/stream_answer`,
+    `${BASE_URL}/api/v1/sessions/${sessionId}/stream_answer?locale=${encodeURIComponent(useLocaleStore().locale)}`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -346,7 +349,7 @@ export async function streamColdStart(
   | { cold_start_complete: boolean; initial_vector: unknown }
 > {
   const resp = await fetch(
-    `${BASE_URL}/api/v1/sessions/${sessionId}/cold_start`,
+    `${BASE_URL}/api/v1/sessions/${sessionId}/cold_start?locale=${encodeURIComponent(useLocaleStore().locale)}`,
     { signal }
   );
   if (!resp.ok) {

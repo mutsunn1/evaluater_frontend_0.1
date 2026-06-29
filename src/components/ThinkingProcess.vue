@@ -19,7 +19,7 @@
           d="M12 1v2m0 18v2m11-11h-2M3 12H1m16.36-7.36-1.41 1.41M7.05 16.95l-1.41 1.41m12.72 0-1.41-1.41M7.05 7.05 5.64 5.64"
         />
       </svg>
-      <span class="font-medium text-gray-600">{{ step.agent }}</span>
+      <span class="font-medium text-gray-600">{{ displayAgent(step) }}</span>
       <span class="truncate">{{ step.output.slice(0, 60) }}...</span>
     </div>
     <!-- Expand button if more than 2 -->
@@ -28,20 +28,27 @@
       class="text-xs text-blue-500 hover:text-blue-700"
       @click="openSidebar()"
     >
-      {{ $t("chat.thinking.viewAll", { count: steps.length }) }}
+      {{ t("chat.thinking.viewAll", { count: steps.length }) }}
     </button>
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed } from "vue";
+import { useI18n } from "vue-i18n";
 import type { ThinkingStep } from "@/types";
 import { selectVisibleThinkingSteps } from "@/utils/thinking";
+import { getTranslatedThinkingLabel } from "@/utils/thinking-labels";
 
 const props = defineProps<{ steps: ThinkingStep[] }>();
 const emit = defineEmits<{ open: [steps: ThinkingStep[]] }>();
+const { t } = useI18n();
 
 const visibleSteps = computed(() => selectVisibleThinkingSteps(props.steps));
+
+function displayAgent(step: ThinkingStep): string {
+  return getTranslatedThinkingLabel(step.agent, t);
+}
 
 function openSidebar(step?: ThinkingStep) {
   emit("open", step ? [step] : props.steps);

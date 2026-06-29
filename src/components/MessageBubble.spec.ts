@@ -2,6 +2,7 @@ import { mount } from "@vue/test-utils";
 import { describe, expect, it } from "vitest";
 import MessageBubble from "./MessageBubble.vue";
 import type { ChatMessage } from "@/types";
+import { i18n } from "@/i18n";
 
 function makeChoiceQuestion(
   overrides: Partial<
@@ -412,6 +413,31 @@ describe("MessageBubble system message rendering", () => {
 
     expect(wrapper.text()).toContain("你好，这是 LLM 返回的中文内容。");
   });
+
+  it("translates cold_start content from i18n key", () => {
+    const message: ChatMessage = {
+      id: "cs-1",
+      role: "cold_start",
+      content: "chat.coldStart.questions.background",
+      cold_start_data: {
+        round: 1,
+        label: "chat.coldStart.labels.background",
+        labelKey: "chat.coldStart.labels.background",
+        questionKey: "chat.coldStart.questions.background",
+      },
+      timestamp: new Date().toISOString(),
+    };
+
+    const wrapper = mount(MessageBubble, {
+      props: { message },
+      global: { plugins: [i18n] },
+    });
+
+    expect(wrapper.text()).toContain(
+      "Welcome to the Chinese proficiency assessment system"
+    );
+    expect(wrapper.text()).toContain("Background");
+  });
 });
 
 describe("MessageBubble 思考过程位置", () => {
@@ -450,5 +476,43 @@ describe("MessageBubble 思考过程位置", () => {
     expect(text.indexOf("本题围绕把字句")).toBeLessThan(
       text.indexOf("请选择正确的句子。")
     );
+  });
+});
+
+describe("MessageBubble historical thinking", () => {
+  it("does not re-translate historical thinking output when locale changes", () => {
+    const message: ChatMessage = {
+      id: "think-1",
+      role: "question",
+      content: "",
+      timestamp: new Date().toISOString(),
+      batch_questions: [
+        {
+          question_type: "multiple_choice",
+          scene: "学习",
+          grammar_focus: "把字句",
+          target_level: "HSK3",
+          question_text: "请选择正确的句子。",
+          options: [{ index: "A", text: "我把作业做完了。" }],
+          skill_dimension: "grammar",
+        },
+      ],
+      thinking_steps: [
+        {
+          agent: "智能体分析",
+          agent_key: "thinking_coordinator",
+          output: "正在分析出题计划",
+        },
+      ],
+    };
+
+    const wrapper = mount(MessageBubble, {
+      props: { message },
+      global: { plugins: [i18n] },
+    });
+
+    i18n.global.locale.value = "en";
+
+    expect(wrapper.text()).toContain("正在分析出题计划");
   });
 });
