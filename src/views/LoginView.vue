@@ -14,19 +14,21 @@
       </button>
     </div>
 
-    <div class="w-full max-w-sm rounded-2xl bg-white p-8 shadow-lg">
-      <div class="mb-8 text-center">
-        <h1 class="text-xl font-bold leading-tight text-gray-900">
+    <div class="w-[min(90vw,22rem)] rounded-2xl bg-white p-6 shadow-lg sm:p-8">
+      <div class="mb-6 text-center">
+        <h1 class="text-lg font-bold leading-snug text-gray-900 sm:text-xl">
           {{ $t("common.appTitleFull") }}
         </h1>
-        <p class="mt-2 text-sm text-gray-500">{{ $t("common.appSubtitle") }}</p>
+        <p class="mt-1.5 text-xs text-gray-500 sm:text-sm">
+          {{ $t("common.appSubtitle") }}
+        </p>
       </div>
 
-      <form @submit.prevent="handleLogin" class="space-y-5">
+      <form @submit.prevent="handleLogin" class="space-y-4">
         <div>
           <label
             for="userId"
-            class="mb-1.5 block text-sm font-medium text-gray-700"
+            class="mb-1.5 block text-xs font-medium text-gray-700 sm:text-sm"
             >{{ $t("common.userId") }}</label
           >
           <input
@@ -34,14 +36,14 @@
             v-model="inputId"
             type="text"
             :placeholder="$t('common.userIdPlaceholder')"
-            class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+            class="w-full rounded-lg border border-gray-300 px-4 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 sm:py-2.5"
             autocomplete="username"
           />
         </div>
 
         <button
           type="submit"
-          class="btn-primary w-full py-2.5 text-base"
+          class="btn-primary w-full py-2 text-base sm:py-2.5"
           :disabled="loading || !inputId.trim()"
         >
           <span v-if="loading">{{ $t("common.loggingIn") }}</span>
