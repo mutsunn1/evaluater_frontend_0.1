@@ -27,6 +27,13 @@ export function buildSessionResult(
     interest_areas: (summary?.interest_areas as string[]) ?? [],
     hsk_adjustment: (summary?.hsk_adjustment as string) ?? "",
     summary: (summary?.summary as string) ?? "",
+    dimension_scores: {
+      vocabulary: confidence.accuracy,
+      grammar: confidence.accuracy,
+      reading: confidence.accuracy,
+      listening: confidence.accuracy,
+      speaking: confidence.accuracy,
+    },
   };
 }
 

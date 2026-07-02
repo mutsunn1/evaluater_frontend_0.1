@@ -1,11 +1,11 @@
 <template>
   <div :class="['flex', alignment]">
     <div :class="containerClass">
-      <ThinkingProcess
+      <ThinkingFrame
         v-if="showThinkingAbove"
         :steps="message.thinking_steps || []"
+        :title="t('chat.thinking.title')"
         class="mb-2"
-        @open="onOpenThinking"
       />
 
       <!-- Main bubble -->
@@ -304,10 +304,10 @@
       </div>
 
       <!-- Thinking steps (below question/feedback bubbles) -->
-      <ThinkingProcess
+      <ThinkingFrame
         v-if="showThinkingBelow"
         :steps="message.thinking_steps || []"
-        @open="onOpenThinking"
+        :title="t('chat.thinking.title')"
       />
     </div>
   </div>
@@ -318,14 +318,13 @@ import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import type {
   ChatMessage,
-  ThinkingStep,
   MediaAsset,
   BatchAnswerPayload,
   ItemData,
   QuestionOption,
 } from "@/types";
 import QuestionRenderer from "@/components/QuestionRenderer.vue";
-import ThinkingProcess from "@/components/ThinkingProcess.vue";
+import ThinkingFrame from "@/components/ThinkingFrame.vue";
 import MediaPromptBlock from "@/components/MediaPromptBlock.vue";
 import MediaOptionAsset from "@/components/MediaOptionAsset.vue";
 import SpeechRecorder from "@/components/SpeechRecorder.vue";
@@ -337,12 +336,23 @@ const { t } = useI18n();
 const emit = defineEmits<{
   answer: [text: string];
   batchSubmit: [answers: BatchAnswerPayload[]];
-  openThinking: [steps: ThinkingStep[]];
 }>();
 
 const alignment = computed(() =>
   props.message.role === "user" ? "justify-end" : "justify-start"
 );
+
+const I18N_KEY_RE = /chat\.(feedback|coldStart)(\.[a-zA-Z0-9_]+)+/g;
+
+function translateEmbeddedKeys(text: string): string {
+  return text.replace(I18N_KEY_RE, (key) => {
+    try {
+      return t(key);
+    } catch {
+      return key;
+    }
+  });
+}
 
 const displayContent = computed(() => {
   if (props.message.source === "system") {
@@ -354,11 +364,8 @@ const displayContent = computed(() => {
   ) {
     return t(props.message.cold_start_data.questionKey);
   }
-  if (
-    props.message.role === "feedback" &&
-    props.message.content.startsWith("chat.feedback.")
-  ) {
-    return t(props.message.content);
+  if (props.message.role === "feedback") {
+    return translateEmbeddedKeys(props.message.content);
   }
   return props.message.content;
 });
@@ -636,10 +643,6 @@ function submitBatch() {
 
 function onAnswer(text: string) {
   emit("answer", text);
-}
-
-function onOpenThinking(steps: ThinkingStep[]) {
-  emit("openThinking", steps);
 }
 
 function formatTime(ts: string) {

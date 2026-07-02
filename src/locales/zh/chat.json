@@ -13,6 +13,7 @@
   },
   "thinking": {
     "title": "思考过程",
+    "steps": "条思考",
     "viewAll": "查看全部 {count} 条思考过程",
     "labels": {
       "planning": "Question Planning",
@@ -79,6 +80,8 @@
     "correct": "回答正确！",
     "incorrect": "回答不正确。",
     "recorded": "回答已记录。",
+    "items": "条反馈",
+    "title": "反馈 ({count})",
     "incorrectWithAnswer": "回答不正确。正确答案是 {answer}。",
     "incorrectTrueFalse": "回答不正确。正确答案是{answer}。",
     "skipModality": {

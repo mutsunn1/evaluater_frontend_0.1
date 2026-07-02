@@ -9,6 +9,18 @@
       <span>{{ itemData.target_level }}</span>
     </div>
 
+    <!-- Prompt media (images/audio/video in the question stem) -->
+    <MediaPromptBlock
+      v-for="m in (itemData.media || []).filter(
+        (a: any) =>
+          a.role === 'prompt' ||
+          a.role === 'question' ||
+          a.role === 'stimulus'
+      )"
+      :key="m.id"
+      :asset="m"
+    />
+
     <!-- Dispatch to specific renderer -->
     <MultipleChoice
       v-if="
@@ -42,16 +54,6 @@
         itemData.question_type === 'speaking'
       "
     >
-      <MediaPromptBlock
-        v-for="m in (itemData.media || []).filter(
-          (a: any) =>
-            a.role === 'prompt' ||
-            a.role === 'question' ||
-            a.role === 'stimulus'
-        )"
-        :key="m.id"
-        :asset="m"
-      />
       <p class="whitespace-pre-wrap text-base font-medium text-gray-800 mb-3">
         {{ itemData.question_text }}
       </p>

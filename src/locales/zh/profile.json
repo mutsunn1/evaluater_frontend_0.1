@@ -4,7 +4,7 @@
   "mastered": "已掌握: {items}",
   "suggestedFocus": "建议关注: {items}",
   "loadFailed": "无法加载用户资料，请检查后端连接是否正常。",
-  "unknown": "未知",
+  "radarNoData": "暂无数据",
   "updatedAt": "更新于 {time}",
   "skills": {
     "hsk": "综合",

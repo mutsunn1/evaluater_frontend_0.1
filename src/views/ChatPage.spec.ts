@@ -31,6 +31,7 @@ vi.mock("@/api", () => ({
 const stubs = {
   ChatView: { template: '<div class="chat-view-stub">ChatView</div>' },
   SessionReport: { template: '<div class="report-stub">Report</div>' },
+  SkillRadarChart: { template: '<div class="radar-stub">Radar</div>' },
 };
 
 function mountChatPage() {

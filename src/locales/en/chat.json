@@ -13,6 +13,7 @@
   },
   "thinking": {
     "title": "Thinking Process",
+    "steps": "steps",
     "viewAll": "View all {count} thinking steps",
     "labels": {
       "planning": "Question Planning",
@@ -79,6 +80,8 @@
     "correct": "Correct!",
     "incorrect": "Incorrect.",
     "recorded": "Answer recorded.",
+    "items": "feedbacks",
+    "title": "Feedback ({count})",
     "incorrectWithAnswer": "Incorrect. The correct answer is {answer}.",
     "incorrectTrueFalse": "Incorrect. The correct answer is {answer}.",
     "skipModality": {

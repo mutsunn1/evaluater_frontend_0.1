@@ -75,6 +75,9 @@ const props = defineProps<{ steps: ThinkingStep[]; isOpen: boolean }>();
 const emit = defineEmits<{ close: [] }>();
 const { t } = useI18n();
 
+// Mark props as used for TypeScript; the component is still referenced by the template.
+void props;
+
 function displayAgent(step: ThinkingStep): string {
   return getTranslatedThinkingLabel(step.agent, t);
 }

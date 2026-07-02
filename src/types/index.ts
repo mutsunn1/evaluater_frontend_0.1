@@ -163,4 +163,11 @@ export interface SessionResult {
   interest_areas?: string[];
   hsk_adjustment?: string;
   summary?: string;
+  dimension_scores?: {
+    vocabulary: number;
+    grammar: number;
+    reading: number;
+    listening: number;
+    speaking: number;
+  };
 }

@@ -90,6 +90,16 @@
         </div>
       </div>
 
+      <!-- Radar chart -->
+      <div class="space-y-2">
+        <h4
+          class="text-xs font-semibold uppercase tracking-wider text-gray-500"
+        >
+          {{ $t("profile.skills.hsk") }}
+        </h4>
+        <SkillRadarChart :skill-levels="profile.skill_levels" variant="dark" />
+      </div>
+
       <!-- Strengths -->
       <div v-if="profile.strengths?.length" class="space-y-2">
         <h4
@@ -147,6 +157,7 @@
 import { ref, computed, onMounted, onUnmounted } from "vue";
 import { useAuthStore } from "@/stores/auth";
 import { getUserProfile } from "@/api";
+import SkillRadarChart from "@/components/SkillRadarChart.vue";
 import type { UserProfileData } from "@/types";
 
 const auth = useAuthStore();

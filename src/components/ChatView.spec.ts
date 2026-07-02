@@ -24,7 +24,8 @@ function mountChatView(
       plugins: [pinia],
       stubs: {
         MessageBubble: messageBubbleStub,
-        ThinkingSidebar: true,
+        ThinkingFrame: true,
+        FeedbackFrame: true,
         ConfidenceBar: true,
       },
     },
@@ -144,7 +145,7 @@ describe("ChatView 实时思考气泡", () => {
     Element.prototype.scrollTo = vi.fn();
   });
 
-  it("正式出题过程中应优先显示具体题目摘要", async () => {
+  it("正式出题过程中思考帧内联显示最近两条，弹窗显示完整链", async () => {
     const pinia = createPinia();
     setActivePinia(pinia);
     const store = useSessionStore();
@@ -185,12 +186,25 @@ describe("ChatView 实时思考气泡", () => {
       }
     );
 
-    const wrapper = mountChatView(pinia);
+    const wrapper = mountChatViewWithRealThinking(pinia);
     await flushPromises();
 
-    expect(wrapper.text()).toContain("本题围绕把字句");
-    expect(wrapper.text()).not.toContain("[grammar] 题目质量检查完成。");
-    expect(wrapper.text()).not.toContain("[grammar] 题目生成完成。");
+    // 头部显示标题与步骤数。
+    expect(wrapper.text()).toContain("Thinking Process");
+    expect(wrapper.text()).toContain("4 steps");
+
+    // 内联预览只展示最近两条。
+    expect(wrapper.text()).toContain("[grammar] 题目质量检查完成。");
+    expect(wrapper.text()).toContain("[grammar] 题目生成完成。");
+
+    // 点击头部打开弹窗，完整链在 body 中渲染。
+    const toggle = wrapper.findComponent({ name: "ThinkingFrame" }).find("button");
+    expect(toggle.exists()).toBe(true);
+    await toggle.trigger("click");
+    await flushPromises();
+
+    expect(document.body.textContent).toContain("本题围绕把字句");
+    expect(document.body.textContent).toContain("系统正在选择适合当前水平的语法题。");
 
     wrapper.unmount();
   });
@@ -305,7 +319,7 @@ describe("ChatView 实时思考气泡", () => {
     );
   });
 
-  it("历史消息应能打开完整思考过程面板", async () => {
+  it("历史消息应能打开完整思考过程弹窗", async () => {
     const pinia = createPinia();
     setActivePinia(pinia);
     const store = useSessionStore();
@@ -356,18 +370,20 @@ describe("ChatView 实时思考气泡", () => {
     const wrapper = mountChatViewWithRealThinking(pinia);
     await flushPromises();
 
-    expect(wrapper.text()).toContain("本题围绕把字句");
-
-    const openThinkingButton = wrapper
-      .findAll("button")
-      .find((button) => button.text().includes("View all"));
-    expect(openThinkingButton).toBeTruthy();
-    await openThinkingButton!.trigger("click");
-    await flushPromises();
-
-    expect(wrapper.text()).toContain("Thinking Process");
+    // 内联预览只展示最近两条。
     expect(wrapper.text()).toContain("Quality Check Agent");
     expect(wrapper.text()).toContain("Grammar Question");
+
+    // 点击头部打开弹窗。
+    const toggle = wrapper.findComponent({ name: "ThinkingFrame" }).find("button");
+    expect(toggle.exists()).toBe(true);
+    await toggle.trigger("click");
+    await flushPromises();
+
+    expect(document.body.textContent).toContain("本题围绕把字句");
+    expect(document.body.textContent).toContain("Thinking Process");
+    expect(document.body.textContent).toContain("Quality Check Agent");
+    expect(document.body.textContent).toContain("Grammar Question");
   });
 });
 

@@ -22,45 +22,29 @@
       class="flex-1 overflow-y-auto px-3 py-4 sm:px-4 sm:py-6"
     >
       <div class="mx-auto max-w-2xl space-y-4">
-        <MessageBubble
-          v-for="msg in sessionStore.messages"
-          :key="msg.id"
-          :message="msg"
-          @answer="handleAnswer"
-          @batch-submit="handleBatchSubmit"
-          @open-thinking="onOpenThinking"
-        />
+        <template v-for="(group, gi) in messageGroups" :key="gi">
+          <FeedbackFrame
+            v-if="group.type === 'feedback'"
+            :messages="group.messages"
+            :default-expanded="false"
+          />
+          <MessageBubble
+            v-else
+            :message="group.message"
+            @answer="handleAnswer"
+            @batch-submit="handleBatchSubmit"
+          />
+        </template>
 
         <!-- Live thinking steps -->
         <div v-if="liveThinking.length > 0" class="flex justify-start">
-          <div class="w-full max-w-full space-y-1.5 sm:max-w-[80%]">
-            <div
-              v-for="step in visibleLiveThinking"
-              :key="step.output"
-              class="flex cursor-pointer items-center gap-1.5 rounded-md bg-gray-100 px-2.5 py-1.5 text-xs text-gray-500 hover:bg-gray-200"
-              @click="openSidebarFromLive()"
-            >
-              <svg
-                class="h-3.5 w-3.5 flex-shrink-0 animate-spin"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-              >
-                <path d="M12 2a10 10 0 0 1 10 10" />
-              </svg>
-              <span class="font-medium text-gray-600">{{
-                step.label || step.agent
-              }}</span>
-              <span class="truncate">{{ step.output.slice(0, 80) }}...</span>
-            </div>
-            <button
-              v-if="liveThinking.length > 2"
-              class="text-xs text-blue-500 hover:text-blue-700"
-              @click="openSidebarFromLive()"
-            >
-              {{ $t("chat.thinking.viewAll", { count: liveThinking.length }) }}
-            </button>
+          <div class="w-full max-w-full sm:max-w-[80%]">
+            <ThinkingFrame
+              :steps="liveThinkingSteps"
+              :title="t('chat.thinking.title')"
+              :auto-scroll="true"
+              :default-expanded="false"
+            />
           </div>
         </div>
 
@@ -151,13 +135,6 @@
     <!-- Confidence bar -->
     <ConfidenceBar :stats="confidence" />
   </div>
-
-  <!-- Thinking sidebar -->
-  <ThinkingSidebar
-    :steps="sidebarSteps"
-    :is-open="sidebarOpen"
-    @close="closeSidebar"
-  />
 </template>
 
 <script setup lang="ts">
@@ -178,16 +155,17 @@ import {
   createDefaultConfidence,
   buildSessionResult,
 } from "@/utils/session";
-import { selectVisibleThinkingSteps } from "@/utils/thinking";
 import { createClientId } from "@/utils/id";
 import type {
+  ChatMessage,
   ThinkingStep,
   ConfidenceStats,
   BatchAnswerPayload,
   ItemData,
 } from "@/types";
 import MessageBubble from "@/components/MessageBubble.vue";
-import ThinkingSidebar from "@/components/ThinkingSidebar.vue";
+import ThinkingFrame from "@/components/ThinkingFrame.vue";
+import FeedbackFrame from "@/components/FeedbackFrame.vue";
 import ConfidenceBar from "@/components/ConfidenceBar.vue";
 
 const sessionStore = useSessionStore();
@@ -195,12 +173,10 @@ const { t } = useI18n();
 const emit = defineEmits<{ profileUpdate: [] }>();
 const chatContainer = ref<HTMLElement | null>(null);
 const userInput = ref("");
-const sidebarOpen = ref(false);
-const sidebarSteps = ref<ThinkingStep[]>([]);
-
-let abortController: AbortController | null = null;
 const activeQuestionRequestId = ref<string | null>(null);
 const questionRetryRequestId = ref<string | null>(null);
+
+let abortController: AbortController | null = null;
 
 function getSignal(): AbortSignal {
   abortController = new AbortController();
@@ -217,6 +193,38 @@ const liveThinking = ref<{ agent: string; label: string; output: string }[]>(
 const confidence = ref<ConfidenceStats>(createDefaultConfidence());
 const autoStopAlert = ref("");
 
+// Group adjacent feedback messages into a single collapsible frame.
+type MessageGroup =
+  | { type: "message"; message: ChatMessage }
+  | { type: "feedback"; messages: ChatMessage[] };
+
+const messageGroups = computed<MessageGroup[]>(() => {
+  const groups: MessageGroup[] = [];
+  let feedbackBuffer: ChatMessage[] = [];
+
+  function flushFeedback() {
+    if (feedbackBuffer.length > 0) {
+      groups.push({ type: "feedback", messages: [...feedbackBuffer] });
+      feedbackBuffer = [];
+    }
+  }
+
+  for (const msg of sessionStore.messages) {
+    if (msg.role === "feedback") {
+      feedbackBuffer.push(msg);
+    } else {
+      flushFeedback();
+      groups.push({ type: "message", message: msg });
+    }
+  }
+  flushFeedback();
+  return groups;
+});
+
+const liveThinkingSteps = computed<ThinkingStep[]>(() =>
+  toThinkingSteps(liveThinking.value)
+);
+
 // Cold start state (synced from store)
 const isColdStart = computed(() => sessionStore.isColdStart);
 const coldStartRound = ref(0);
@@ -229,10 +237,6 @@ const loadingText = computed(() => {
   if (sessionStore.loadingPhase === "judging") return t("chat.loading.judging");
   return t("chat.loading.nextRound");
 });
-
-const visibleLiveThinking = computed(() =>
-  selectVisibleThinkingSteps(liveThinking.value)
-);
 
 function scrollToBottom() {
   nextTick(() => {
@@ -719,21 +723,6 @@ async function updateConfidence() {
   } catch (e) {
     console.error("Confidence update failed:", e);
   }
-}
-
-function onOpenThinking(steps: ThinkingStep[]) {
-  sidebarSteps.value = steps;
-  sidebarOpen.value = true;
-}
-
-function openSidebarFromLive() {
-  sidebarSteps.value = toThinkingSteps(liveThinking.value);
-  sidebarOpen.value = true;
-}
-
-function closeSidebar() {
-  sidebarOpen.value = false;
-  sidebarSteps.value = [];
 }
 
 // Auto-start: check if cold start is needed

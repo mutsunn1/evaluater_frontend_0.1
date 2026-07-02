@@ -44,6 +44,16 @@
           </div>
         </div>
 
+        <!-- Radar chart for skill dimensions -->
+        <div class="rounded-xl border border-gray-200 bg-white p-4">
+          <h3 class="mb-4 text-center text-sm font-semibold text-gray-700">
+            {{ $t("profile.skills.hsk") }}
+          </h3>
+          <div class="mx-auto max-w-xs">
+            <SkillRadarChart :skill-levels="dimensionScores" variant="light" />
+          </div>
+        </div>
+
         <!-- AI Summary (markdown rendered) -->
         <div
           v-if="result.summary"
@@ -152,17 +162,28 @@
 
 <script setup lang="ts">
 import { useRouter } from "vue-router";
+import { computed } from "vue";
 import { useAuthStore } from "@/stores/auth";
 import { useSessionStore } from "@/stores/session";
 import { createSession } from "@/api";
+import SkillRadarChart from "@/components/SkillRadarChart.vue";
 import type { SessionResult } from "@/types";
 import { marked } from "marked";
 import { createClientId } from "@/utils/id";
 
-defineProps<{ result: SessionResult }>();
+const props = defineProps<{ result: SessionResult }>();
 const router = useRouter();
 const sessionStore = useSessionStore();
 const auth = useAuthStore();
+
+const dimensionScores = computed(() => ({
+  hsk: props.result.average_score,
+  vocabulary: props.result.dimension_scores?.vocabulary ?? props.result.average_score,
+  grammar: props.result.dimension_scores?.grammar ?? props.result.average_score,
+  reading: props.result.dimension_scores?.reading ?? props.result.average_score,
+  listening: props.result.dimension_scores?.listening ?? props.result.average_score,
+  speaking: props.result.dimension_scores?.speaking ?? props.result.average_score,
+}));
 
 function handleBackHome() {
   sessionStore.clearSession();
