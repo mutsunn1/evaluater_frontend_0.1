@@ -57,18 +57,40 @@
 
         <div v-if="sessionStore.error" class="flex justify-center">
           <div
-            class="flex items-center gap-3 rounded-lg bg-red-50 px-4 py-2 text-sm text-red-600"
+            class="flex flex-col gap-2 rounded-lg bg-red-50 px-4 py-2 text-sm text-red-600"
           >
-            <span>{{ sessionStore.error }}</span>
-            <button
-              v-if="questionRetryRequestId"
-              data-testid="retry-question"
-              class="rounded border border-red-200 bg-white px-2 py-1 text-xs font-medium text-red-700 hover:bg-red-100"
-              @click="retryQuestion"
+            <div class="flex items-center gap-3">
+              <span>{{ displayErrorMessage }}</span>
+              <button
+                v-if="canRetryError"
+                data-testid="retry-question"
+                class="rounded border border-red-200 bg-white px-2 py-1 text-xs font-medium text-red-700 hover:bg-red-100"
+                @click="retryQuestion"
+              >
+                {{ $t("common.retry") }}
+              </button>
+            </div>
+            <div
+              v-if="sessionStore.streamError?.requestId"
+              class="text-xs text-red-400"
             >
-              {{ $t("common.retry") }}
-            </button>
+              request_id: {{ sessionStore.streamError.requestId }}
+            </div>
           </div>
+        </div>
+
+        <div
+          v-if="networkErrorVisible"
+          class="mx-auto mb-2 flex max-w-2xl items-center justify-between gap-2 rounded-lg border border-orange-200 bg-orange-50 px-4 py-2 text-sm text-orange-700"
+          data-testid="network-error-toast"
+        >
+          <span>{{ $t("chat.sseError.network") }}</span>
+          <button
+            class="text-xs font-medium text-orange-800 hover:underline"
+            @click="dismissNetworkError"
+          >
+            {{ $t("common.close") }}
+          </button>
         </div>
       </div>
     </div>
@@ -163,6 +185,7 @@ import type {
   BatchAnswerPayload,
   ItemData,
 } from "@/types";
+import { SseError } from "@/types";
 import MessageBubble from "@/components/MessageBubble.vue";
 import ThinkingFrame from "@/components/ThinkingFrame.vue";
 import FeedbackFrame from "@/components/FeedbackFrame.vue";
@@ -192,6 +215,47 @@ const liveThinking = ref<{ agent: string; label: string; output: string }[]>(
 );
 const confidence = ref<ConfidenceStats>(createDefaultConfidence());
 const autoStopAlert = ref("");
+const networkErrorDismissed = ref(false);
+
+const isNetworkError = computed(() => {
+  const code = sessionStore.streamError?.code;
+  return code === "NETWORK_ERROR" || code === "HTTP_ERROR";
+});
+
+const networkErrorVisible = computed(() => {
+  return (
+    isNetworkError.value &&
+    !networkErrorDismissed.value &&
+    !sessionStore.isLoading
+  );
+});
+
+function dismissNetworkError() {
+  networkErrorDismissed.value = true;
+}
+
+const canRetryError = computed(() => {
+  if (!sessionStore.streamError) {
+    return !!questionRetryRequestId.value;
+  }
+  return sessionStore.streamError.retryable;
+});
+
+const displayErrorMessage = computed(() => {
+  const err = sessionStore.streamError;
+  if (!err) return sessionStore.error || "";
+  const key = `chat.sseError.${err.code}`;
+  const translated = t(key);
+  return translated !== key ? translated : err.message;
+});
+
+watch(
+  () => sessionStore.isLoading,
+  (loading) => {
+    if (!loading) return;
+    networkErrorDismissed.value = false;
+  }
+);
 
 // Group adjacent feedback messages into a single collapsible frame.
 type MessageGroup =
@@ -335,8 +399,18 @@ async function fetchColdStartRound() {
     liveThinking.value = [];
     scrollToLatest();
   } catch (e) {
-    sessionStore.error =
-      e instanceof Error ? e.message : t("chat.coldStart.questionFailed");
+    const err =
+      e instanceof SseError
+        ? e
+        : new SseError({
+            code: "INTERNAL_ERROR",
+            message:
+              e instanceof Error
+                ? e.message
+                : t("chat.coldStart.questionFailed"),
+            retryable: false,
+          });
+    sessionStore.setStreamError(err);
     liveThinking.value = [];
   } finally {
     sessionStore.isLoading = false;
@@ -402,8 +476,16 @@ async function handleColdStartAnswer(answer: string) {
 
     liveThinking.value = [];
   } catch (e) {
-    sessionStore.error =
-      e instanceof Error ? e.message : t("chat.coldStart.answerFailed");
+    const err =
+      e instanceof SseError
+        ? e
+        : new SseError({
+            code: "INTERNAL_ERROR",
+            message:
+              e instanceof Error ? e.message : t("chat.coldStart.answerFailed"),
+            retryable: false,
+          });
+    sessionStore.setStreamError(err);
     liveThinking.value = [];
   } finally {
     sessionStore.isLoading = false;
@@ -476,8 +558,15 @@ async function handleAnswer(answer: string) {
 
     liveThinking.value = [];
   } catch (e) {
-    sessionStore.error =
-      e instanceof Error ? e.message : t("chat.answer.failed");
+    const err =
+      e instanceof SseError
+        ? e
+        : new SseError({
+            code: "INTERNAL_ERROR",
+            message: e instanceof Error ? e.message : t("chat.answer.failed"),
+            retryable: false,
+          });
+    sessionStore.setStreamError(err);
     liveThinking.value = [];
   } finally {
     sessionStore.isLoading = false;
@@ -580,8 +669,16 @@ async function fetchNextQuestion(requestId?: string) {
     questionRetryRequestId.value = null;
     liveThinking.value = [];
   } catch (e) {
-    sessionStore.error =
-      e instanceof Error ? e.message : t("chat.answer.fetchFailed");
+    const err =
+      e instanceof SseError
+        ? e
+        : new SseError({
+            code: "NETWORK_ERROR",
+            message:
+              e instanceof Error ? e.message : t("chat.answer.fetchFailed"),
+            retryable: true,
+          });
+    sessionStore.setStreamError(err);
     questionRetryRequestId.value = questionRequestId;
     liveThinking.value = [];
   } finally {
@@ -590,6 +687,7 @@ async function fetchNextQuestion(requestId?: string) {
 }
 
 async function retryQuestion() {
+  networkErrorDismissed.value = false;
   if (!questionRetryRequestId.value || sessionStore.isLoading) return;
   await fetchNextQuestion(questionRetryRequestId.value);
 }
@@ -687,8 +785,15 @@ async function handleBatchSubmit(answers: BatchAnswerPayload[]) {
       await fetchNextQuestion();
     }
   } catch (e) {
-    sessionStore.error =
-      e instanceof Error ? e.message : t("chat.answer.failed");
+    const err =
+      e instanceof SseError
+        ? e
+        : new SseError({
+            code: "INTERNAL_ERROR",
+            message: e instanceof Error ? e.message : t("chat.answer.failed"),
+            retryable: false,
+          });
+    sessionStore.setStreamError(err);
     liveThinking.value = [];
   } finally {
     sessionStore.isLoading = false;
@@ -706,8 +811,7 @@ async function updateConfidence() {
         try {
           const endResp = await endSession(sessionStore.sessionId!);
           const summary = endResp.summary as
-            | Record<string, unknown>
-            | undefined;
+            Record<string, unknown> | undefined;
           sessionStore.sessionResult = buildSessionResult(
             summary,
             confidence.value

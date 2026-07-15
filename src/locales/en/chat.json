@@ -139,9 +139,16 @@
       "boundaryCheckTwo": "Confirming adjacent HSK level boundaries and complex expression stability."
     }
   },
-  "answer": {
-    "failed": "Failed to submit answer",
-    "fetchFailed": "Failed to load question"
+  "sseError": {
+    "network": "Network connection interrupted. Please check your network and retry.",
+    "GENERATION_FAILED": "Question generation failed. Please try again.",
+    "GRADING_FAILED": "Grading failed. Please try again.",
+    "STREAM_TIMEOUT": "Response timed out. Please check your network and retry.",
+    "NETWORK_ERROR": "Network connection interrupted. Please check your network and retry.",
+    "HTTP_ERROR": "Service temporarily unavailable. Please try again later.",
+    "SESSION_NOT_FOUND": "Session expired. Please log in again.",
+    "RATE_LIMITED": "Too many requests. Please try again later.",
+    "INTERNAL_ERROR": "System error. Please try again later."
   },
   "responseMode": {
     "speech": "Speech answer: (submitted)",

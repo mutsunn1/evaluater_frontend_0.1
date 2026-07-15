@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import ChatView from "./ChatView.vue";
 import { batchSubmitAnswer, streamQuestion } from "@/api";
 import { useSessionStore } from "@/stores/session";
+import { SseError } from "@/types";
 
 vi.mock("@/api", () => ({
   streamQuestion: vi.fn(),
@@ -43,6 +44,121 @@ function mountChatViewWithRealThinking(pinia: ReturnType<typeof createPinia>) {
   });
 }
 
+describe("ChatView SSE error display", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    setActivePinia(createPinia());
+    Element.prototype.scrollTo = vi.fn();
+  });
+
+  function setupFailedQuestion(retryable: boolean) {
+    const pinia = createPinia();
+    setActivePinia(pinia);
+    const store = useSessionStore();
+    store.sessionId = "session-1";
+    store.messages = [
+      {
+        id: "welcome",
+        role: "system",
+        content: "开始评测",
+        timestamp: new Date().toISOString(),
+      },
+    ];
+
+    vi.mocked(streamQuestion).mockRejectedValueOnce(
+      new SseError({
+        code: "GENERATION_FAILED",
+        message: "all generators failed",
+        retryable,
+      })
+    );
+    return { pinia, store };
+  }
+
+  it("可重试错误显示重试按钮", async () => {
+    const { pinia, store } = setupFailedQuestion(true);
+    const wrapper = mountChatView(pinia);
+    await flushPromises();
+
+    expect(store.streamError?.code).toBe("GENERATION_FAILED");
+    expect(wrapper.text()).toContain("Question generation failed");
+    expect(wrapper.find('button[data-testid="retry-question"]').exists()).toBe(
+      true
+    );
+  });
+
+  it("不可重试错误不显示重试按钮", async () => {
+    const { pinia, store } = setupFailedQuestion(false);
+    const wrapper = mountChatView(pinia);
+    await flushPromises();
+
+    expect(store.streamError?.code).toBe("GENERATION_FAILED");
+    expect(wrapper.find('button[data-testid="retry-question"]').exists()).toBe(
+      false
+    );
+  });
+
+  it("网络错误显示顶部 Toast", async () => {
+    const pinia = createPinia();
+    setActivePinia(pinia);
+    const store = useSessionStore();
+    store.sessionId = "session-1";
+    store.messages = [
+      {
+        id: "welcome",
+        role: "system",
+        content: "开始评测",
+        timestamp: new Date().toISOString(),
+      },
+    ];
+
+    vi.mocked(streamQuestion).mockRejectedValueOnce(
+      new SseError({
+        code: "NETWORK_ERROR",
+        message: "network interrupted",
+        retryable: true,
+      })
+    );
+
+    const wrapper = mountChatView(pinia);
+    await flushPromises();
+
+    expect(store.streamError?.code).toBe("NETWORK_ERROR");
+    const toast = wrapper.find('[data-testid="network-error-toast"]');
+    expect(toast.exists()).toBe(true);
+    expect(toast.text()).toContain("Network connection interrupted");
+  });
+
+  it("显示 request_id 便于排查", async () => {
+    const pinia = createPinia();
+    setActivePinia(pinia);
+    const store = useSessionStore();
+    store.sessionId = "session-1";
+    store.messages = [
+      {
+        id: "welcome",
+        role: "system",
+        content: "开始评测",
+        timestamp: new Date().toISOString(),
+      },
+    ];
+
+    vi.mocked(streamQuestion).mockRejectedValueOnce(
+      new SseError({
+        code: "GENERATION_FAILED",
+        message: "all generators failed",
+        retryable: true,
+        request_id: "req-debug-123",
+      })
+    );
+
+    const wrapper = mountChatView(pinia);
+    await flushPromises();
+
+    expect(wrapper.text()).toContain("req-debug-123");
+  });
+});
+
 describe("ChatView 正式出题重试", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -65,7 +181,13 @@ describe("ChatView 正式出题重试", () => {
     ];
 
     vi.mocked(streamQuestion)
-      .mockRejectedValueOnce(new TypeError("Failed to fetch"))
+      .mockRejectedValueOnce(
+        new SseError({
+          code: "NETWORK_ERROR",
+          message: "Failed to fetch",
+          retryable: true,
+        })
+      )
       .mockResolvedValueOnce({
         batch_id: "batch-1",
         questions: [
@@ -84,7 +206,7 @@ describe("ChatView 正式出题重试", () => {
     const wrapper = mountChatView(pinia);
     await flushPromises();
 
-    expect(wrapper.text()).toContain("Failed to fetch");
+    expect(wrapper.text()).toContain("Network connection interrupted");
     const retryButton = wrapper.get('button[data-testid="retry-question"]');
     const firstRequestId = vi.mocked(streamQuestion).mock.calls[0][3];
 
@@ -118,7 +240,11 @@ describe("ChatView 正式出题重试", () => {
     ];
 
     vi.mocked(streamQuestion).mockRejectedValueOnce(
-      new TypeError("Failed to fetch")
+      new SseError({
+        code: "NETWORK_ERROR",
+        message: "Failed to fetch",
+        retryable: true,
+      })
     );
 
     try {
@@ -135,6 +261,7 @@ describe("ChatView 正式出题重试", () => {
       expect.any(String)
     );
     expect(store.error).toBe("Failed to fetch");
+    expect(store.streamError?.code).toBe("NETWORK_ERROR");
   });
 });
 
@@ -198,13 +325,17 @@ describe("ChatView 实时思考气泡", () => {
     expect(wrapper.text()).toContain("[grammar] 题目生成完成。");
 
     // 点击头部打开弹窗，完整链在 body 中渲染。
-    const toggle = wrapper.findComponent({ name: "ThinkingFrame" }).find("button");
+    const toggle = wrapper
+      .findComponent({ name: "ThinkingFrame" })
+      .find("button");
     expect(toggle.exists()).toBe(true);
     await toggle.trigger("click");
     await flushPromises();
 
     expect(document.body.textContent).toContain("本题围绕把字句");
-    expect(document.body.textContent).toContain("系统正在选择适合当前水平的语法题。");
+    expect(document.body.textContent).toContain(
+      "系统正在选择适合当前水平的语法题。"
+    );
 
     wrapper.unmount();
   });
@@ -375,7 +506,9 @@ describe("ChatView 实时思考气泡", () => {
     expect(wrapper.text()).toContain("Grammar Question");
 
     // 点击头部打开弹窗。
-    const toggle = wrapper.findComponent({ name: "ThinkingFrame" }).find("button");
+    const toggle = wrapper
+      .findComponent({ name: "ThinkingFrame" })
+      .find("button");
     expect(toggle.exists()).toBe(true);
     await toggle.trigger("click");
     await flushPromises();

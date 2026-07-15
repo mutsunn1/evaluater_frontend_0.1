@@ -11,11 +11,7 @@ export type QuestionType =
   | "unknown";
 
 export type ResponseMode =
-  | "choice"
-  | "text"
-  | "speech"
-  | "handwriting"
-  | "upload";
+  "choice" | "text" | "speech" | "handwriting" | "upload";
 
 export interface MediaAsset {
   id: string;
@@ -60,11 +56,7 @@ export interface ItemData {
   blank_count?: number;
   expected_duration_seconds?: number;
   skill_dimension?:
-    | "vocabulary"
-    | "grammar"
-    | "reading"
-    | "listening"
-    | "speaking";
+    "vocabulary" | "grammar" | "reading" | "listening" | "speaking";
   batch_id?: string;
   batch_index?: number;
   batch_total?: number;
@@ -144,11 +136,35 @@ export interface ColdStartQuestion {
   question: string;
 }
 
-export interface BatchAnswerPayload {
-  question_index: number;
-  answer: string;
-  response_mode?: string;
-  response_asset_ids?: string[];
+export type SseErrorCode =
+  | "GENERATION_FAILED"
+  | "GRADING_FAILED"
+  | "STREAM_TIMEOUT"
+  | "NETWORK_ERROR"
+  | "HTTP_ERROR"
+  | "SESSION_NOT_FOUND"
+  | "RATE_LIMITED"
+  | "INTERNAL_ERROR";
+
+export interface SseErrorPayload {
+  code: SseErrorCode | string;
+  message: string;
+  retryable?: boolean;
+  request_id?: string;
+}
+
+export class SseError extends Error {
+  code: SseErrorCode | string;
+  retryable: boolean;
+  requestId?: string;
+
+  constructor(payload: SseErrorPayload) {
+    super(payload.message || "Stream error");
+    this.name = "SseError";
+    this.code = payload.code || "INTERNAL_ERROR";
+    this.retryable = !!payload.retryable;
+    this.requestId = payload.request_id;
+  }
 }
 
 export interface SessionResult {

@@ -1,9 +1,13 @@
 import { describe, expect, it, vi, afterEach, beforeEach } from "vitest";
 import { batchSubmitAnswer, streamQuestion, createSession } from "./index";
+import { SseError } from "@/types";
 import { createPinia, setActivePinia } from "pinia";
 import { useLocaleStore } from "@/stores/locale";
 
-function buildSseResponse(body: string) {
+function buildSseResponse(
+  body: string,
+  options?: { status?: number; ok?: boolean }
+) {
   return new Response(
     new ReadableStream({
       start(controller) {
@@ -11,7 +15,7 @@ function buildSseResponse(body: string) {
         controller.close();
       },
     }),
-    { status: 200 }
+    { status: options?.status ?? 200 }
   );
 }
 
@@ -27,6 +31,14 @@ function buildChunkedSseResponse(chunks: string[]) {
     }),
     { status: 200 }
   );
+}
+
+function buildErrorResponse(status: number, body: string) {
+  return {
+    ok: false,
+    status,
+    text: async () => body,
+  } as unknown as Response;
 }
 
 describe("streamQuestion", () => {
@@ -176,6 +188,104 @@ describe("batchSubmitAnswer", () => {
         signal: undefined,
       }
     );
+  });
+});
+
+describe("streamQuestion error handling", () => {
+  beforeEach(() => {
+    setActivePinia(createPinia());
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("收到 error 事件时应抛出 SseError", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockImplementation(() =>
+        buildSseResponse(
+          [
+            "event: error",
+            'data: {"code":"GENERATION_FAILED","message":"all generators failed","retryable":true,"request_id":"req-1"}',
+            "",
+            "",
+          ].join("\n")
+        )
+      );
+    vi.stubGlobal("fetch", fetchMock);
+
+    let caught: unknown;
+    try {
+      await streamQuestion("session-1", vi.fn());
+    } catch (e) {
+      caught = e;
+    }
+
+    expect(caught).toBeInstanceOf(SseError);
+    const err = caught as SseError;
+    expect(err.code).toBe("GENERATION_FAILED");
+    expect(err.message).toBe("all generators failed");
+    expect(err.retryable).toBe(true);
+    expect(err.requestId).toBe("req-1");
+  });
+
+  it("HTTP 错误应被包装为 SseError", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(buildErrorResponse(500, "Internal Server Error"));
+    vi.stubGlobal("fetch", fetchMock);
+
+    let caught: unknown;
+    try {
+      await streamQuestion("session-1", vi.fn());
+    } catch (e) {
+      caught = e;
+    }
+
+    expect(caught).toBeInstanceOf(SseError);
+    expect((caught as SseError).code).toBe("HTTP_ERROR");
+    expect((caught as SseError).retryable).toBe(true);
+  });
+
+  it("HTTP 429 应被包装为可重试的 RATE_LIMITED", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(buildErrorResponse(429, "too many requests"));
+    vi.stubGlobal("fetch", fetchMock);
+
+    let caught: unknown;
+    try {
+      await streamQuestion("session-1", vi.fn());
+    } catch (e) {
+      caught = e;
+    }
+
+    expect(caught).toBeInstanceOf(SseError);
+    expect((caught as SseError).code).toBe("RATE_LIMITED");
+    expect((caught as SseError).retryable).toBe(true);
+  });
+
+  it("非 JSON 的 error 事件 data 不应被静默吞掉", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockImplementation(() =>
+        buildSseResponse(
+          ["event: error", "data: raw failure log", "", ""].join("\n")
+        )
+      );
+    vi.stubGlobal("fetch", fetchMock);
+
+    let caught: unknown;
+    try {
+      await streamQuestion("session-1", vi.fn());
+    } catch (e) {
+      caught = e;
+    }
+
+    expect(caught).toBeInstanceOf(SseError);
+    expect((caught as SseError).code).toBe("INTERNAL_ERROR");
+    expect((caught as SseError).message).toBe("raw failure log");
   });
 });
 
