@@ -22,7 +22,59 @@
       <span class="flex-1 truncate text-xs font-medium text-green-800"
         >{{ title }}</span
       >
-      <span class="ml-2 text-xs text-green-600/80"
+      <span
+        v-if="feedbackOutcomes.length"
+        class="feedback-outcome-track"
+        role="list"
+        :aria-label="`${feedbackOutcomes.length} ${t('chat.feedback.items')}`"
+      >
+        <span
+          v-for="(outcome, index) in feedbackOutcomes"
+          :key="outcome.id"
+          class="feedback-outcome-slot"
+          :class="
+            outcome.isCorrect
+              ? 'feedback-outcome-correct'
+              : 'feedback-outcome-incorrect'
+          "
+          :style="{ animationDelay: `${index * 60}ms` }"
+          :title="
+            t(
+              outcome.isCorrect
+                ? 'chat.feedback.correct'
+                : 'chat.feedback.incorrect'
+            )
+          "
+          role="listitem"
+          data-testid="feedback-outcome-slot"
+          :data-correct="String(outcome.isCorrect)"
+        >
+          <svg
+            v-if="outcome.isCorrect"
+            viewBox="0 0 12 12"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.9"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <path d="m2.1 6.25 2.25 2.2 5.55-5.4" />
+          </svg>
+          <svg
+            v-else
+            viewBox="0 0 12 12"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.8"
+            stroke-linecap="round"
+            aria-hidden="true"
+          >
+            <path d="m3.1 3.1 5.8 5.8M8.9 3.1 3.1 8.9" />
+          </svg>
+        </span>
+      </span>
+      <span v-else class="ml-2 text-xs text-green-600/80"
         >{{ messages.length }} {{ t("chat.feedback.items") }}</span
       >
       <svg
@@ -191,6 +243,14 @@ const previewMessages = computed(() => {
   return props.messages.slice(-previewLimit);
 });
 
+const feedbackOutcomes = computed(() => {
+  return props.messages.flatMap((message) =>
+    typeof message.is_correct === "boolean"
+      ? [{ id: message.id, isCorrect: message.is_correct }]
+      : []
+  );
+});
+
 const I18N_KEY_RE = /chat\.(feedback|coldStart)(\.[a-zA-Z0-9_]+)+/g;
 
 function translateEmbeddedKeys(text: string): string {
@@ -270,5 +330,70 @@ watch(
 
 .feedback-preview-item {
   backface-visibility: hidden;
+}
+
+.feedback-outcome-track {
+  display: flex;
+  max-width: min(46%, 13rem);
+  flex-shrink: 1;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.3rem;
+  overflow-x: auto;
+  padding: 0.1rem 0.05rem;
+  scrollbar-width: none;
+}
+
+.feedback-outcome-track::-webkit-scrollbar {
+  display: none;
+}
+
+.feedback-outcome-slot {
+  display: inline-flex;
+  width: 1.25rem;
+  height: 1.25rem;
+  flex: 0 0 1.25rem;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid;
+  border-radius: 9999px;
+  box-shadow:
+    inset 0 1px 1px rgb(255 255 255 / 0.75),
+    0 1px 2px rgb(20 83 45 / 0.08);
+  animation: feedback-outcome-enter 0.34s cubic-bezier(0.2, 0.9, 0.3, 1.25) both;
+}
+
+.feedback-outcome-slot svg {
+  width: 0.72rem;
+  height: 0.72rem;
+}
+
+.feedback-outcome-correct {
+  border-color: #86efac;
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.feedback-outcome-incorrect {
+  border-color: #fda4af;
+  background: #fff1f2;
+  color: #e11d48;
+}
+
+@keyframes feedback-outcome-enter {
+  from {
+    opacity: 0;
+    transform: translateX(5px) scale(0.55);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .feedback-outcome-slot {
+    animation: none;
+  }
 }
 </style>

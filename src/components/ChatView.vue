@@ -541,6 +541,7 @@ async function handleAnswer(answer: string) {
             ? "chat.feedback.correct"
             : "chat.feedback.incorrect"
           : "chat.feedback.recorded"),
+      is_correct: isCorrect,
       timestamp: new Date().toISOString(),
       thinking_steps: toThinkingSteps(liveThinking.value),
     });
@@ -766,6 +767,7 @@ async function handleBatchSubmit(answers: BatchAnswerPayload[]) {
         id: createClientId(),
         role: "feedback",
         content: `${dimText}${t("chat.question.number", { n: answers[i]?.question_index + 1 })}: ${feedback || fallbackKey}`,
+        is_correct: isCorrect,
         timestamp: new Date().toISOString(),
         thinking_steps:
           i === 0 && thinkingSteps.length > 0 ? thinkingSteps : undefined,

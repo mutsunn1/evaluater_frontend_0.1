@@ -13,12 +13,13 @@ const thinkingFrameStub = defineComponent({
   },
 });
 
-function makeMessage(content: string): ChatMessage {
+function makeMessage(content: string, isCorrect?: boolean): ChatMessage {
   return {
     id: `msg-${content}`,
     role: "feedback",
     source: "llm",
     content,
+    is_correct: isCorrect,
     timestamp: new Date().toISOString(),
   };
 }
@@ -52,6 +53,32 @@ describe("FeedbackFrame i18n", () => {
     // 只断言最近两条预览可见（新设计只展示最近两条）
     expect(text).toContain("已跳过本题");
     expect(text).toContain("回答正确");
+  });
+
+  it("renders one ordered result slot for each judged question", () => {
+    const wrapper = mount(FeedbackFrame, {
+      props: {
+        messages: [
+          makeMessage("第一题", true),
+          makeMessage("未评分提示"),
+          makeMessage("第二题", false),
+          makeMessage("第三题", true),
+        ],
+      },
+      global: {
+        stubs: {
+          ThinkingFrame: thinkingFrameStub,
+        },
+      },
+    });
+
+    const slots = wrapper.findAll('[data-testid="feedback-outcome-slot"]');
+    expect(slots).toHaveLength(3);
+    expect(slots.map((slot) => slot.attributes("data-correct"))).toEqual([
+      "true",
+      "false",
+      "true",
+    ]);
   });
 
   it("translates system-sourced feedback keys", () => {

@@ -582,6 +582,7 @@ describe("ChatView 批量提交幂等标识", () => {
     expect(vi.mocked(batchSubmitAnswer).mock.calls[0][4]).toEqual(
       expect.any(String)
     );
+    expect(store.messages.find((message) => message.role === "feedback")?.is_correct).toBe(true);
   });
 
   it("批量提交答案后应把 thinking 结果保存在反馈消息中", async () => {

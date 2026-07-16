@@ -71,6 +71,7 @@ export interface ChatMessage {
   role: "system" | "user" | "question" | "feedback" | "cold_start";
   source?: "llm" | "system" | "user";
   content: string;
+  is_correct?: boolean;
   item_data?: ItemData;
   batch_questions?: ItemData[];
   session_id?: string;
