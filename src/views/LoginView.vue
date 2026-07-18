@@ -41,6 +41,47 @@
           />
         </div>
 
+        <div class="space-y-2">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-medium text-gray-700 sm:text-sm">{{
+              $t("common.includeListening")
+            }}</span>
+            <button
+              type="button"
+              role="switch"
+              :aria-checked="includeListening"
+              data-testid="toggle-listening"
+              class="relative h-6 w-11 shrink-0 cursor-pointer rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+              :class="includeListening ? 'bg-blue-600' : 'bg-gray-200'"
+              @click="toggleListening"
+            >
+              <span
+                class="absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform"
+                :class="includeListening ? 'translate-x-5' : ''"
+              />
+            </button>
+          </div>
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-medium text-gray-700 sm:text-sm">{{
+              $t("common.includeSpeaking")
+            }}</span>
+            <button
+              type="button"
+              role="switch"
+              :aria-checked="includeSpeaking"
+              data-testid="toggle-speaking"
+              class="relative h-6 w-11 shrink-0 cursor-pointer rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+              :class="includeSpeaking ? 'bg-blue-600' : 'bg-gray-200'"
+              @click="toggleSpeaking"
+            >
+              <span
+                class="absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform"
+                :class="includeSpeaking ? 'translate-x-5' : ''"
+              />
+            </button>
+          </div>
+        </div>
+
         <button
           type="submit"
           class="btn-primary w-full py-2 text-base sm:py-2.5"
@@ -78,6 +119,42 @@ const inputId = ref("");
 const loading = ref(false);
 const errorMsg = ref("");
 
+// Session content preferences, persisted across visits (default: on).
+const LISTENING_STORAGE_KEY = "evaluater-include-listening";
+const SPEAKING_STORAGE_KEY = "evaluater-include-speaking";
+
+function readBoolPreference(key: string): boolean {
+  try {
+    const stored = localStorage.getItem(key);
+    if (stored === "true") return true;
+    if (stored === "false") return false;
+  } catch {
+    // localStorage unavailable (e.g. private mode): fall back to default
+  }
+  return true;
+}
+
+function writeBoolPreference(key: string, value: boolean) {
+  try {
+    localStorage.setItem(key, value ? "true" : "false");
+  } catch {
+    // Persistence is best-effort; ignore storage failures
+  }
+}
+
+const includeListening = ref(readBoolPreference(LISTENING_STORAGE_KEY));
+const includeSpeaking = ref(readBoolPreference(SPEAKING_STORAGE_KEY));
+
+function toggleListening() {
+  includeListening.value = !includeListening.value;
+  writeBoolPreference(LISTENING_STORAGE_KEY, includeListening.value);
+}
+
+function toggleSpeaking() {
+  includeSpeaking.value = !includeSpeaking.value;
+  writeBoolPreference(SPEAKING_STORAGE_KEY, includeSpeaking.value);
+}
+
 async function handleLogin() {
   const id = inputId.value.trim();
   if (!id) return;
@@ -89,7 +166,10 @@ async function handleLogin() {
     auth.login(id);
     sessionStore.clearSession();
 
-    const resp = await createSession(id);
+    const resp = await createSession(id, {
+      includeListening: includeListening.value,
+      includeSpeaking: includeSpeaking.value,
+    });
 
     if ((resp as Record<string, unknown>).needs_cold_start === true) {
       sessionStore.isColdStart = true;

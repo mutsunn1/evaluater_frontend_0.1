@@ -14,6 +14,8 @@
   "loading": "Loading...",
   "endEvaluation": "End Evaluation",
   "openProfile": "Open profile",
+  "includeListening": "Include listening questions",
+  "includeSpeaking": "Include speaking questions",
   "error": {
     "backend": "Failed to connect to backend: {message}"
   }

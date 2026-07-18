@@ -334,6 +334,24 @@ describe("createSession", () => {
       expect.anything()
     );
   });
+
+  it("passes include_listening/include_speaking when options are provided", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ session_id: "s3", user_id: "u3", hsk_level: 1 }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await createSession("u3", {
+      includeListening: false,
+      includeSpeaking: true,
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/v1/sessions?user_id=u3&locale=en&include_listening=false&include_speaking=true",
+      expect.anything()
+    );
+  });
 });
 
 describe("streamColdStart", () => {

@@ -165,13 +165,18 @@ async function readSseEvents(
 }
 
 export async function createSession(
-  userId: string
+  userId: string,
+  options?: { includeListening?: boolean; includeSpeaking?: boolean }
 ): Promise<{ session_id: string; user_id: string; hsk_level: number }> {
   const locale = useLocaleStore().locale;
-  return fetchJson(
-    `${BASE_URL}/api/v1/sessions?user_id=${encodeURIComponent(userId)}&locale=${encodeURIComponent(locale)}`,
-    { method: "POST" }
-  );
+  let url = `${BASE_URL}/api/v1/sessions?user_id=${encodeURIComponent(userId)}&locale=${encodeURIComponent(locale)}`;
+  if (options?.includeListening !== undefined) {
+    url += `&include_listening=${options.includeListening}`;
+  }
+  if (options?.includeSpeaking !== undefined) {
+    url += `&include_speaking=${options.includeSpeaking}`;
+  }
+  return fetchJson(url, { method: "POST" });
 }
 
 /** SSE stream: calls back on each thinking step and final question.

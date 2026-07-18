@@ -14,6 +14,8 @@
   "loading": "加载中...",
   "endEvaluation": "结束评测",
   "openProfile": "打开用户资料",
+  "includeListening": "包含听力题",
+  "includeSpeaking": "包含口语题",
   "error": {
     "backend": "连接后端失败：{message}"
   }
