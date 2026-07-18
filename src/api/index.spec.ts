@@ -1,5 +1,10 @@
 import { describe, expect, it, vi, afterEach, beforeEach } from "vitest";
-import { batchSubmitAnswer, streamQuestion, createSession } from "./index";
+import {
+  batchSubmitAnswer,
+  streamQuestion,
+  streamColdStart,
+  createSession,
+} from "./index";
 import { SseError } from "@/types";
 import { createPinia, setActivePinia } from "pinia";
 import { useLocaleStore } from "@/stores/locale";
@@ -328,5 +333,99 @@ describe("createSession", () => {
       "/api/v1/sessions?user_id=u2&locale=en",
       expect.anything()
     );
+  });
+});
+
+describe("streamColdStart", () => {
+  beforeEach(() => {
+    setActivePinia(createPinia());
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("应透传冷启动 question 事件的结构化题目字段", async () => {
+    const payload = {
+      cold_start: true,
+      round: 2,
+      phase: "diagnostic",
+      label: "词汇诊断",
+      question: "请选择正确的词语。\nA. 苹果\nB. 香蕉",
+      item_id: "item-1",
+      question_type: "multiple_choice",
+      question_text: "请选择正确的词语。",
+      options: [
+        { index: "A", text: "苹果" },
+        { index: "B", text: "香蕉" },
+      ],
+      skill_dimension: "vocabulary",
+      response_mode: "choice",
+      target_level: "HSK 4",
+      media: [
+        {
+          id: "item-1-audio",
+          type: "audio",
+          role: "prompt",
+          source: "prepared",
+          url: "/media/item-1.mp3",
+        },
+      ],
+    };
+    const fetchMock = vi.fn().mockResolvedValue(
+      buildSseResponse(
+        ["event: question", `data: ${JSON.stringify(payload)}`, "", ""].join(
+          "\n"
+        )
+      )
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await streamColdStart("session-1", vi.fn());
+
+    expect(result).toMatchObject({
+      cold_start: true,
+      round: 2,
+      label: "词汇诊断",
+      question: payload.question,
+      item_id: "item-1",
+      question_type: "multiple_choice",
+      question_text: "请选择正确的词语。",
+      options: [
+        { index: "A", text: "苹果" },
+        { index: "B", text: "香蕉" },
+      ],
+      skill_dimension: "vocabulary",
+      response_mode: "choice",
+      target_level: "HSK 4",
+      media: [
+        expect.objectContaining({
+          id: "item-1-audio",
+          type: "audio",
+          role: "prompt",
+        }),
+      ],
+    });
+  });
+
+  it("应透传 cold_start_complete 事件", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      buildSseResponse(
+        [
+          "event: question",
+          'data: {"cold_start_complete":true,"initial_vector":{"vocabulary":0.5}}',
+          "",
+          "",
+        ].join("\n")
+      )
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await streamColdStart("session-1", vi.fn());
+
+    expect(result).toMatchObject({
+      cold_start_complete: true,
+      initial_vector: { vocabulary: 0.5 },
+    });
   });
 });

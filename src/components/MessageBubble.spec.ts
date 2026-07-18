@@ -1,7 +1,8 @@
 import { mount } from "@vue/test-utils";
 import { describe, expect, it } from "vitest";
 import MessageBubble from "./MessageBubble.vue";
-import type { ChatMessage } from "@/types";
+import QuestionRenderer from "./QuestionRenderer.vue";
+import type { ChatMessage, ItemData } from "@/types";
 import { i18n } from "@/i18n";
 
 function makeChoiceQuestion(
@@ -514,5 +515,76 @@ describe("MessageBubble historical thinking", () => {
     i18n.global.locale.value = "en";
 
     expect(wrapper.text()).toContain("正在分析出题计划");
+  });
+});
+
+describe("MessageBubble 冷启动结构化题目渲染", () => {
+  function makeColdStartMessage(
+    itemOverrides: Partial<ItemData> = {}
+  ): ChatMessage {
+    return {
+      id: "cs-1",
+      role: "cold_start",
+      content: "请选择正确的词语。\nA. 苹果\nB. 香蕉",
+      cold_start_data: { round: 1, label: "词汇诊断" },
+      item_data: {
+        question_type: "multiple_choice",
+        scene: "词汇诊断",
+        grammar_focus: "",
+        target_level: "HSK 4",
+        question_text: "请选择正确的词语。",
+        options: [
+          { index: "A", text: "苹果" },
+          { index: "B", text: "香蕉" },
+        ],
+        skill_dimension: "vocabulary",
+        response_mode: "choice",
+        ...itemOverrides,
+      },
+      timestamp: new Date().toISOString(),
+    };
+  }
+
+  it("带 item_data 的冷启动消息应渲染选项按钮而非纯文本", () => {
+    const wrapper = mount(MessageBubble, {
+      props: { message: makeColdStartMessage() },
+    });
+
+    const buttons = wrapper.findAll("button");
+    expect(buttons.some((b) => b.text().includes("苹果"))).toBe(true);
+    expect(buttons.some((b) => b.text().includes("香蕉"))).toBe(true);
+    // 纯文本兜底 content（含 "A. 苹果" 行）不应直接渲染
+    expect(wrapper.text()).not.toContain("A. 苹果");
+  });
+
+  it("选择并确认选项后应 emit 选项字母", async () => {
+    const wrapper = mount(MessageBubble, {
+      props: { message: makeColdStartMessage() },
+    });
+
+    const optionB = wrapper
+      .findAll("button")
+      .find((b) => b.text().includes("香蕉"));
+    expect(optionB).toBeTruthy();
+    await optionB!.trigger("click");
+    const confirm = wrapper
+      .findAll("button")
+      .find((b) => b.text().includes("Confirm Answer"));
+    expect(confirm).toBeTruthy();
+    await confirm!.trigger("click");
+
+    expect(wrapper.emitted("answer")![0]).toEqual(["B"]);
+  });
+
+  it("无 item_data 的冷启动消息仍渲染纯文本内容", () => {
+    const message = makeColdStartMessage();
+    delete message.item_data;
+
+    const wrapper = mount(MessageBubble, {
+      props: { message },
+    });
+
+    expect(wrapper.findComponent(QuestionRenderer).exists()).toBe(false);
+    expect(wrapper.text()).toContain("请选择正确的词语。");
   });
 });

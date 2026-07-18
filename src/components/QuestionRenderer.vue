@@ -22,18 +22,19 @@
     />
 
     <!-- Dispatch to specific renderer -->
+    <TrueFalse
+      v-if="itemData.question_type === 'true_false'"
+      :data="itemData"
+      @select="emitAnswer"
+    />
     <MultipleChoice
-      v-if="
+      v-else-if="
+        isChoiceMode ||
         itemData.question_type === 'multiple_choice' ||
         itemData.question_type === 'multiple_select' ||
         itemData.question_type === 'listening' ||
         itemData.question_type === 'listening_comprehension'
       "
-      :data="itemData"
-      @select="emitAnswer"
-    />
-    <TrueFalse
-      v-else-if="itemData.question_type === 'true_false'"
       :data="itemData"
       @select="emitAnswer"
     />
@@ -70,8 +71,10 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from "vue";
 import { useI18n } from "vue-i18n";
 import type { ItemData } from "@/types";
+import { resolveResponseMode } from "@/utils/question";
 import MultipleChoice from "@/components/MultipleChoice.vue";
 import TrueFalse from "@/components/TrueFalse.vue";
 import FillInBlank from "@/components/FillInBlank.vue";
@@ -80,8 +83,17 @@ import SpeechRecorder from "@/components/SpeechRecorder.vue";
 import MediaPromptBlock from "@/components/MediaPromptBlock.vue";
 
 const { t } = useI18n();
-defineProps<{ itemData: ItemData; sessionId?: string }>();
+const props = defineProps<{ itemData: ItemData; sessionId?: string }>();
 const emit = defineEmits<{ answer: [text: string] }>();
+
+// Choice-mode questions with options render as option buttons even when the
+// question_type is not a legacy choice type (the v2 question bank uses types
+// like "listening_choice" with an explicit response_mode of "choice").
+const isChoiceMode = computed(
+  () =>
+    resolveResponseMode(props.itemData) === "choice" &&
+    (props.itemData.options?.length ?? 0) > 0
+);
 
 function emitAnswer(text: string) {
   emit("answer", text);

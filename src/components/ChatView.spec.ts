@@ -2,9 +2,15 @@ import { flushPromises, mount } from "@vue/test-utils";
 import { createPinia, setActivePinia } from "pinia";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import ChatView from "./ChatView.vue";
-import { batchSubmitAnswer, streamQuestion } from "@/api";
+import {
+  batchSubmitAnswer,
+  streamColdStart,
+  streamColdStartAnswer,
+  streamQuestion,
+} from "@/api";
 import { useSessionStore } from "@/stores/session";
 import { SseError } from "@/types";
+import type { ColdStartQuestion } from "@/types";
 
 vi.mock("@/api", () => ({
   streamQuestion: vi.fn(),
@@ -782,5 +788,150 @@ describe("ChatView mobile bottom input", () => {
     const input = wrapper.find("input");
     expect(input.exists()).toBe(true);
     expect(input.attributes("placeholder")).toBe("Please answer briefly...");
+  });
+});
+
+describe("ChatView 冷启动结构化题目", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    Element.prototype.scrollTo = vi.fn();
+  });
+
+  const choicePayload: ColdStartQuestion = {
+    cold_start: true,
+    round: 1,
+    phase: "diagnostic",
+    label: "词汇诊断",
+    question: "请选择正确的词语。\nA. 苹果\nB. 香蕉",
+    item_id: "item-1",
+    question_type: "multiple_choice",
+    question_text: "请选择正确的词语。",
+    options: [
+      { index: "A", text: "苹果" },
+      { index: "B", text: "香蕉" },
+    ],
+    skill_dimension: "vocabulary",
+    response_mode: "choice",
+    target_level: "HSK 4",
+  };
+
+  function setupColdStartStore() {
+    const pinia = createPinia();
+    setActivePinia(pinia);
+    const store = useSessionStore();
+    store.sessionId = "session-1";
+    store.isColdStart = true;
+    store.messages = [
+      {
+        id: "welcome",
+        role: "system",
+        content: "开始评测",
+        timestamp: new Date().toISOString(),
+      },
+    ];
+    return { pinia, store };
+  }
+
+  it("冷启动 question 载荷应映射为消息的 item_data", async () => {
+    const { pinia, store } = setupColdStartStore();
+    vi.mocked(streamColdStart).mockResolvedValue(choicePayload);
+
+    mountChatView(pinia);
+    await flushPromises();
+
+    const message = store.messages.find((msg) => msg.role === "cold_start");
+    expect(message?.content).toBe(choicePayload.question);
+    expect(message?.item_data).toMatchObject({
+      question_type: "multiple_choice",
+      question_text: "请选择正确的词语。",
+      response_mode: "choice",
+      skill_dimension: "vocabulary",
+      target_level: "HSK 4",
+    });
+    expect(message?.item_data?.options).toHaveLength(2);
+    expect(store.isWaitingAnswer).toBe(true);
+  });
+
+  it("当前冷启动题为选择题时应隐藏底部输入框", async () => {
+    const { pinia } = setupColdStartStore();
+    vi.mocked(streamColdStart).mockResolvedValue(choicePayload);
+
+    const wrapper = mountChatView(pinia);
+    await flushPromises();
+
+    expect(wrapper.find("input").exists()).toBe(false);
+    expect(wrapper.text()).toContain("Please answer in the question above");
+  });
+
+  it("当前冷启动题为文本作答时仍显示输入框", async () => {
+    const { pinia } = setupColdStartStore();
+    vi.mocked(streamColdStart).mockResolvedValue({
+      ...choicePayload,
+      question_type: "fill_in_blank",
+      question_text: "请用“礼貌”造句。",
+      options: [],
+      response_mode: "text",
+    });
+
+    const wrapper = mountChatView(pinia);
+    await flushPromises();
+
+    const input = wrapper.find("input");
+    expect(input.exists()).toBe(true);
+    expect(input.attributes("placeholder")).toBe("Please answer briefly...");
+  });
+
+  it("旧版纯文本载荷不构造 item_data，仍显示输入框", async () => {
+    const { pinia, store } = setupColdStartStore();
+    vi.mocked(streamColdStart).mockResolvedValue({
+      cold_start: true,
+      round: 1,
+      label: "Background",
+      question: "Tell me about yourself",
+    });
+
+    const wrapper = mountChatView(pinia);
+    await flushPromises();
+
+    const message = store.messages.find((msg) => msg.role === "cold_start");
+    expect(message?.item_data).toBeUndefined();
+    expect(wrapper.find("input").exists()).toBe(true);
+  });
+
+  it("真实组件树下应渲染选项按钮，作答走冷启动提交链路", async () => {
+    const { pinia } = setupColdStartStore();
+    vi.mocked(streamColdStart).mockResolvedValue(choicePayload);
+    vi.mocked(streamColdStartAnswer).mockResolvedValue({
+      cold_start_complete: false,
+      feedback: "已记录。",
+      observer_output: "",
+      grade_output: "",
+    });
+
+    const wrapper = mountChatViewWithRealThinking(pinia);
+    await flushPromises();
+
+    // Option buttons render inside the bubble; no bottom text input.
+    const buttons = wrapper.findAll("button");
+    expect(buttons.some((b) => b.text().includes("苹果"))).toBe(true);
+    expect(buttons.some((b) => b.text().includes("香蕉"))).toBe(true);
+    expect(wrapper.find("input").exists()).toBe(false);
+
+    // Select an option and confirm → cold start answer API gets the letter.
+    const optionB = buttons.find((b) => b.text().includes("香蕉"));
+    await optionB!.trigger("click");
+    const confirm = wrapper
+      .findAll("button")
+      .find((b) => b.text().includes("Confirm Answer"));
+    await confirm!.trigger("click");
+    await flushPromises();
+
+    expect(vi.mocked(streamColdStartAnswer)).toHaveBeenCalledWith(
+      "session-1",
+      "B",
+      expect.any(Number),
+      expect.any(Function),
+      expect.anything()
+    );
   });
 });

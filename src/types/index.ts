@@ -135,6 +135,22 @@ export interface ColdStartQuestion {
   round: number;
   label: string;
   question: string;
+  phase?: string;
+  item_id?: string;
+  question_type?: QuestionType;
+  question_text?: string;
+  options?: QuestionOption[];
+  skill_dimension?: ItemData["skill_dimension"];
+  response_mode?: ResponseMode;
+  target_level?: string;
+  media?: MediaAsset[];
+}
+
+export interface BatchAnswerPayload {
+  question_index: number;
+  answer: string;
+  response_mode?: string;
+  response_asset_ids?: string[];
 }
 
 export type SseErrorCode =

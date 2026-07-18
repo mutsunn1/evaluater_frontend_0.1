@@ -285,9 +285,12 @@
           </div>
         </template>
 
-        <!-- Single question rendering (immediate submit for single questions) -->
+        <!-- Single question rendering (also cold start structured items) -->
         <QuestionRenderer
-          v-else-if="message.role === 'question' && message.item_data"
+          v-else-if="
+            (message.role === 'question' || message.role === 'cold_start') &&
+            message.item_data
+          "
           :item-data="message.item_data"
           @answer="onAnswer"
         />
@@ -323,6 +326,7 @@ import type {
   ItemData,
   QuestionOption,
 } from "@/types";
+import { resolveResponseMode } from "@/utils/question";
 import QuestionRenderer from "@/components/QuestionRenderer.vue";
 import ThinkingFrame from "@/components/ThinkingFrame.vue";
 import MediaPromptBlock from "@/components/MediaPromptBlock.vue";
@@ -451,30 +455,6 @@ const badgeClass = computed(() => {
 const timeClass = computed(() =>
   props.message.role === "user" ? "text-blue-200 text-right" : "text-gray-400"
 );
-
-// response_mode 解析：显式值优先；缺失时根据 question_type 推断
-function resolveResponseMode(q: {
-  response_mode?: string;
-  question_type: string;
-}): string {
-  if (q.response_mode) return q.response_mode;
-  if (
-    q.question_type === "multiple_choice" ||
-    q.question_type === "multiple_select" ||
-    q.question_type === "true_false" ||
-    q.question_type === "listening" ||
-    q.question_type === "listening_comprehension"
-  ) {
-    return "choice";
-  }
-  if (
-    q.question_type === "speaking" ||
-    q.question_type === "speaking_response"
-  ) {
-    return "speech";
-  }
-  return "text";
-}
 
 function isPlaceholderMode(mode: string): boolean {
   return mode === "speech" || mode === "handwriting" || mode === "upload";

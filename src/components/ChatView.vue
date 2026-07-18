@@ -97,9 +97,15 @@
 
     <div class="border-t border-gray-200 bg-white px-3 py-3 sm:px-4">
       <div class="mx-auto max-w-2xl">
-        <!-- Always show input during cold start -->
+        <!-- Cold start: input only while the current question expects text -->
         <template v-if="isColdStart && !sessionStore.isLoading">
-          <div class="flex gap-2">
+          <div
+            v-if="isColdStartChoice"
+            class="text-center text-sm text-gray-500"
+          >
+            {{ $t("chat.answerInQuestion") }}
+          </div>
+          <div v-else class="flex gap-2">
             <input
               v-model="userInput"
               type="text"
@@ -178,11 +184,13 @@ import {
   buildSessionResult,
 } from "@/utils/session";
 import { createClientId } from "@/utils/id";
+import { resolveResponseMode } from "@/utils/question";
 import type {
   ChatMessage,
   ThinkingStep,
   ConfidenceStats,
   BatchAnswerPayload,
+  ColdStartQuestion,
   ItemData,
 } from "@/types";
 import { SseError } from "@/types";
@@ -293,6 +301,17 @@ const liveThinkingSteps = computed<ThinkingStep[]>(() =>
 const isColdStart = computed(() => sessionStore.isColdStart);
 const coldStartRound = ref(0);
 
+// Hide the bottom input while the latest cold start question is answered by
+// clicking option buttons inside the bubble (choice response mode).
+const isColdStartChoice = computed(() => {
+  if (!isColdStart.value) return false;
+  const lastColdStart = [...sessionStore.messages]
+    .reverse()
+    .find((msg) => msg.role === "cold_start");
+  const item = lastColdStart?.item_data;
+  return !!item && resolveResponseMode(item) === "choice";
+});
+
 const loadingText = computed(() => {
   if (isColdStart.value)
     return coldStartRound.value > 0
@@ -341,6 +360,26 @@ async function startColdStart() {
   await fetchColdStartRound();
 }
 
+/**
+ * Map a cold start question payload to ItemData so the message bubble can
+ * reuse the standard question renderer (option buttons + media). Returns
+ * undefined for legacy payloads that only carry the plain-text question.
+ */
+function buildColdStartItem(q: ColdStartQuestion): ItemData | undefined {
+  if (!q.question_type) return undefined;
+  return {
+    question_type: q.question_type,
+    scene: q.label,
+    grammar_focus: "",
+    target_level: q.target_level || "",
+    question_text: q.question_text || q.question,
+    options: q.options,
+    skill_dimension: q.skill_dimension,
+    response_mode: q.response_mode,
+    media: q.media,
+  };
+}
+
 async function fetchColdStartRound() {
   if (!sessionStore.sessionId) return;
   sessionStore.isLoading = true;
@@ -373,18 +412,14 @@ async function fetchColdStartRound() {
       return;
     }
 
-    const q = resp as {
-      cold_start: boolean;
-      round: number;
-      label: string;
-      question: string;
-    };
+    const q = resp as ColdStartQuestion;
     coldStartRound.value = q.round;
 
     sessionStore.addMessage({
       id: createClientId(),
       role: "cold_start",
       content: q.question,
+      item_data: buildColdStartItem(q),
       cold_start_data: {
         round: q.round,
         label: q.label,

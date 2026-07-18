@@ -4,6 +4,7 @@ import {
   type ItemData,
   type BatchAnswerPayload,
   type SseErrorPayload,
+  type ColdStartQuestion,
 } from "@/types";
 
 const BASE_URL = import.meta.env.VITE_API_URL || "";
@@ -57,7 +58,7 @@ function parseSseErrorPayload(data: string): SseErrorPayload {
 
   if (typeof parsed.error === "string") {
     return {
-      code: parsed.code || "INTERNAL_ERROR",
+      code: (parsed.code as string) || "INTERNAL_ERROR",
       message: parsed.error,
       retryable: !!parsed.retryable,
       request_id:
@@ -483,8 +484,7 @@ export async function streamColdStart(
   onThinking: (step: { agent: string; label: string; output: string }) => void,
   signal?: AbortSignal
 ): Promise<
-  | { cold_start: boolean; round: number; label: string; question: string }
-  | { cold_start_complete: boolean; initial_vector: unknown }
+  ColdStartQuestion | { cold_start_complete: boolean; initial_vector: unknown }
 > {
   const resp = await fetch(
     `${BASE_URL}/api/v1/sessions/${sessionId}/cold_start?locale=${encodeURIComponent(useLocaleStore().locale)}`,
@@ -495,7 +495,7 @@ export async function streamColdStart(
     throw wrapHttpError(resp, body);
   }
   let questionData:
-    | { cold_start: boolean; round: number; label: string; question: string }
+    | ColdStartQuestion
     | { cold_start_complete: boolean; initial_vector: unknown }
     | null = null;
 
@@ -503,13 +503,8 @@ export async function streamColdStart(
     if (eventType === "thinking") {
       onThinking(parsed as { agent: string; label: string; output: string });
     } else if (eventType === "question") {
-      questionData = parsed as
-        | {
-            cold_start: boolean;
-            round: number;
-            label: string;
-            question: string;
-          }
+      questionData = parsed as unknown as
+        | ColdStartQuestion
         | { cold_start_complete: boolean; initial_vector: unknown };
       return false;
     } else if (eventType === "error") {
