@@ -26,17 +26,24 @@
           <div
             v-for="(q, qi) in message.batch_questions"
             :key="qi"
-            class="mb-4 last:mb-0"
+            :class="['mb-4 last:mb-0', skippedQuestions[qi] && 'skipped-card']"
           >
             <!-- Question meta: scene, grammar_focus, target_level -->
             <div
-              class="mb-2 flex flex-wrap items-center gap-2 text-xs text-gray-500"
+              class="question-meta mb-2 flex flex-wrap items-center gap-2 text-xs text-gray-500"
             >
               <span class="rounded bg-blue-50 px-1.5 py-0.5 font-medium">{{
                 q.scene
               }}</span>
               <span v-if="q.grammar_focus">{{ q.grammar_focus }}</span>
               <span>{{ q.target_level }}</span>
+              <span
+                v-if="skippedQuestions[qi]"
+                :data-testid="`skipped-badge-${qi}`"
+                class="rounded bg-gray-200 px-1.5 py-0.5 font-medium text-gray-500"
+              >
+                {{ t("chat.question.skipped") }}
+              </span>
             </div>
             <!-- Media prompt blocks -->
             <template v-if="q.media && q.media.length">
@@ -270,6 +277,22 @@
               </div>
             </template>
             <!-- end choice dispatch -->
+
+            <!-- Skip toggle: speech questions and questions with audio media -->
+            <div v-if="isSkippable(q)" class="skip-toggle-row mt-2 text-right">
+              <button
+                type="button"
+                :data-testid="`skip-toggle-${qi}`"
+                class="text-xs text-gray-400 underline underline-offset-2 transition-colors hover:text-gray-600"
+                @click="toggleSkip(qi)"
+              >
+                {{
+                  skippedQuestions[qi]
+                    ? t("chat.question.undoSkip")
+                    : t("chat.question.skip")
+                }}
+              </button>
+            </div>
           </div>
 
           <!-- Unified submit button for batch -->
@@ -540,6 +563,8 @@ const batchAnswers = ref<Record<number, string>>({});
 const batchFillAnswers = ref<Record<number, string>>({});
 const selectedMulti = ref<Record<number, string[]>>({});
 const speechAssets = ref<Record<number, string>>({});
+// Skipped questions: submitted as {question_index, skip: true}
+const skippedQuestions = ref<Record<number, boolean>>({});
 
 // Reset answers when message changes
 watch(
@@ -548,9 +573,22 @@ watch(
     batchAnswers.value = {};
     batchFillAnswers.value = {};
     selectedMulti.value = {};
+    skippedQuestions.value = {};
   },
   { immediate: true }
 );
+
+/** Speech questions and questions carrying audio media can be skipped. */
+function isSkippable(q: ItemData): boolean {
+  return (
+    resolveResponseMode(q) === "speech" ||
+    (q.media || []).some((m) => m.type === "audio")
+  );
+}
+
+function toggleSkip(qi: number) {
+  skippedQuestions.value[qi] = !skippedQuestions.value[qi];
+}
 
 function toggleMultiSelect(qi: number, index: string) {
   const selected = selectedMulti.value[qi] || [];
@@ -565,6 +603,7 @@ function toggleMultiSelect(qi: number, index: string) {
 const canBatchSubmit = computed(() => {
   const questions = props.message.batch_questions || [];
   return questions.every((q, qi) => {
+    if (skippedQuestions.value[qi]) return true;
     const mode = resolveResponseMode(q);
     // speech/handwriting/upload 模式的题目不需要用户交互即可提交
     if (isPlaceholderMode(mode)) {
@@ -589,6 +628,10 @@ function submitBatch() {
   const questions = props.message.batch_questions || [];
   const answers = questions.map((q, qi) => {
     const base: Record<string, unknown> = { question_index: qi };
+    if (skippedQuestions.value[qi]) {
+      base.skip = true;
+      return base;
+    }
     const mode = resolveResponseMode(q);
     if (isPlaceholderMode(mode)) {
       base.response_mode = mode;
@@ -636,3 +679,12 @@ function formatTime(ts: string) {
   }
 }
 </script>
+
+<style scoped>
+/* Skipped question: gray out and disable the answer area while keeping the
+   meta row (skipped badge) and the skip toggle itself interactive. */
+.skipped-card > :not(.question-meta):not(.skip-toggle-row) {
+  pointer-events: none;
+  opacity: 0.5;
+}
+</style>

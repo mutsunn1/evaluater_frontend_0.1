@@ -588,3 +588,163 @@ describe("MessageBubble 冷启动结构化题目渲染", () => {
     expect(wrapper.text()).toContain("请选择正确的词语。");
   });
 });
+
+describe("MessageBubble 跳过本题", () => {
+  const audioPrompt: ItemData["media"] = [
+    {
+      id: "aud-1",
+      type: "audio",
+      role: "prompt",
+      source: "prepared",
+      url: "https://example.com/listen.mp3",
+    },
+  ];
+
+  function makeBatchMessage(questions: ItemData[]): ChatMessage {
+    return {
+      id: "batch-skip-1",
+      role: "question",
+      content: "",
+      timestamp: new Date().toISOString(),
+      batch_questions: questions,
+    };
+  }
+
+  function choiceQuestion(overrides: Partial<ItemData> = {}): ItemData {
+    return {
+      question_type: "multiple_choice",
+      scene: "学习",
+      grammar_focus: "",
+      target_level: "HSK4",
+      question_text: "请选择正确的词语。",
+      options: [
+        { index: "A", text: "苹果" },
+        { index: "B", text: "香蕉" },
+      ],
+      skill_dimension: "vocabulary",
+      response_mode: "choice",
+      ...overrides,
+    };
+  }
+
+  it("只有带音频媒体的题显示跳过按钮", () => {
+    const wrapper = mount(MessageBubble, {
+      props: {
+        message: makeBatchMessage([
+          choiceQuestion({ media: audioPrompt }),
+          choiceQuestion(),
+          {
+            question_type: "fill_in_blank",
+            scene: "学习",
+            grammar_focus: "",
+            target_level: "HSK4",
+            question_text: "请填入正确的词语。",
+            skill_dimension: "vocabulary",
+            response_mode: "text",
+          },
+        ]),
+      },
+    });
+
+    expect(wrapper.find('[data-testid="skip-toggle-0"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="skip-toggle-1"]').exists()).toBe(false);
+    expect(wrapper.find('[data-testid="skip-toggle-2"]').exists()).toBe(false);
+  });
+
+  it("口语题（response_mode=speech，无音频）也显示跳过按钮", () => {
+    const wrapper = mount(MessageBubble, {
+      props: {
+        message: makeBatchMessage([
+          {
+            question_type: "speaking_response",
+            scene: "学校",
+            grammar_focus: "",
+            target_level: "HSK4",
+            question_text: "请用中文介绍你的学校。",
+            skill_dimension: "speaking",
+            response_mode: "speech",
+          },
+        ]),
+      },
+    });
+
+    expect(wrapper.find('[data-testid="skip-toggle-0"]').exists()).toBe(true);
+  });
+
+  it("点击跳过后题卡变灰并显示已跳过徽章，再次点击恢复", async () => {
+    const wrapper = mount(MessageBubble, {
+      props: {
+        message: makeBatchMessage([choiceQuestion({ media: audioPrompt })]),
+      },
+    });
+
+    const toggle = wrapper.get('[data-testid="skip-toggle-0"]');
+    expect(toggle.text()).toContain("Skip");
+
+    await toggle.trigger("click");
+    expect(wrapper.find('[data-testid="skipped-badge-0"]').exists()).toBe(true);
+    expect(wrapper.text()).toContain("Skipped");
+    expect(wrapper.find("div.skipped-card").exists()).toBe(true);
+    expect(toggle.text()).toContain("Undo skip");
+
+    await toggle.trigger("click");
+    expect(wrapper.find('[data-testid="skipped-badge-0"]').exists()).toBe(
+      false
+    );
+    expect(wrapper.find("div.skipped-card").exists()).toBe(false);
+    expect(toggle.text()).not.toContain("Undo skip");
+  });
+
+  it("跳过的题无需作答即可提交，载荷为 {question_index, skip: true}", async () => {
+    const wrapper = mount(MessageBubble, {
+      props: {
+        message: makeBatchMessage([choiceQuestion({ media: audioPrompt })]),
+      },
+    });
+
+    expect(wrapper.text()).toContain(
+      "Please complete all questions before submitting"
+    );
+
+    await wrapper.get('[data-testid="skip-toggle-0"]').trigger("click");
+    const submit = wrapper
+      .findAll("button")
+      .find((b) => b.text().includes("Submit All"));
+    expect(submit).toBeTruthy();
+    await submit!.trigger("click");
+
+    expect(wrapper.emitted("batchSubmit")![0][0]).toEqual([
+      { question_index: 0, skip: true },
+    ]);
+  });
+
+  it("其余题正常作答，跳过题以 skip 随批次发出", async () => {
+    const wrapper = mount(MessageBubble, {
+      props: {
+        message: makeBatchMessage([
+          choiceQuestion({ media: audioPrompt }),
+          choiceQuestion({
+            question_text: "下面哪个是动物？",
+            options: [
+              { index: "A", text: "猫" },
+              { index: "B", text: "桌子" },
+            ],
+          }),
+        ]),
+      },
+    });
+
+    await wrapper.get('[data-testid="skip-toggle-0"]').trigger("click");
+    const cat = wrapper.findAll("button").find((b) => b.text().includes("猫"));
+    await cat!.trigger("click");
+    const submit = wrapper
+      .findAll("button")
+      .find((b) => b.text().includes("Submit All"));
+    await submit!.trigger("click");
+
+    expect(wrapper.emitted("batchSubmit")![0][0]).toEqual([
+      { question_index: 0, skip: true },
+      { question_index: 1, answer: "A" },
+    ]);
+  });
+});

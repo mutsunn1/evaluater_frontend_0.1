@@ -736,6 +736,12 @@ async function handleBatchSubmit(answers: BatchAnswerPayload[]) {
   // Add user answers as a single message
   const answerSummary = answers
     .map((a) => {
+      if (a.skip) {
+        return (
+          t("chat.question.number", { n: a.question_index + 1 }) +
+          `: ${t("chat.question.skipped")}`
+        );
+      }
       const label = a.response_mode
         ? {
             speech: t("chat.responseMode.speech"),

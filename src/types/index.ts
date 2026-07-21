@@ -148,9 +148,10 @@ export interface ColdStartQuestion {
 
 export interface BatchAnswerPayload {
   question_index: number;
-  answer: string;
+  answer?: string;
   response_mode?: string;
   response_asset_ids?: string[];
+  skip?: boolean;
 }
 
 export type SseErrorCode =

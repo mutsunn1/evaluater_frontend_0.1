@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import ChatView from "./ChatView.vue";
 import {
   batchSubmitAnswer,
+  getConfidence,
   streamColdStart,
   streamColdStartAnswer,
   streamQuestion,
@@ -11,6 +12,7 @@ import {
 import { useSessionStore } from "@/stores/session";
 import { SseError } from "@/types";
 import type { ColdStartQuestion } from "@/types";
+import { createDefaultConfidence } from "@/utils/session";
 
 vi.mock("@/api", () => ({
   streamQuestion: vi.fn(),
@@ -933,5 +935,119 @@ describe("ChatView 冷启动结构化题目", () => {
       expect.any(Function),
       expect.anything()
     );
+  });
+});
+
+describe("ChatView 跳过题批次提交", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    Element.prototype.scrollTo = vi.fn();
+  });
+
+  it("跳过题以 skip 随批次发出，反馈气泡显示后端跳过文案", async () => {
+    const pinia = createPinia();
+    setActivePinia(pinia);
+    const store = useSessionStore();
+    store.sessionId = "session-1";
+    store.messages = [
+      {
+        id: "welcome",
+        role: "system",
+        content: "开始评测",
+        timestamp: new Date().toISOString(),
+      },
+      {
+        id: "question",
+        role: "question",
+        content: "",
+        timestamp: new Date().toISOString(),
+        batch_questions: [
+          {
+            question_type: "listening_comprehension",
+            scene: "听力",
+            grammar_focus: "",
+            target_level: "HSK4",
+            question_text: "听音频，选择你听到的词。",
+            options: [
+              { index: "A", text: "苹果" },
+              { index: "B", text: "香蕉" },
+            ],
+            skill_dimension: "listening",
+            response_mode: "choice",
+            media: [
+              {
+                id: "aud-1",
+                type: "audio",
+                role: "prompt",
+                source: "prepared",
+                url: "https://example.com/listen.mp3",
+              },
+            ],
+          },
+          {
+            question_type: "multiple_choice",
+            scene: "日常",
+            grammar_focus: "",
+            target_level: "HSK4",
+            question_text: "你好吗？",
+            options: [{ index: "A", text: "好" }],
+            skill_dimension: "vocabulary",
+            response_mode: "choice",
+          },
+        ],
+      },
+    ];
+    store.currentQuestions = store.messages[1].batch_questions || [];
+    store.isWaitingAnswer = true;
+
+    vi.mocked(batchSubmitAnswer).mockResolvedValue({
+      results: [
+        {
+          item_id: 1,
+          question_index: 0,
+          is_correct: null,
+          skipped: true,
+          feedback: "已跳过本题。",
+        },
+        { item_id: 2, question_index: 1, is_correct: true, feedback: "回答正确！" },
+      ],
+      confidence: 0.2,
+      accuracy: 50,
+      auto_stop: false,
+    });
+    vi.mocked(getConfidence).mockResolvedValue(createDefaultConfidence());
+    vi.mocked(streamQuestion).mockResolvedValue({
+      batch_id: "batch-2",
+      questions: [],
+    });
+
+    const wrapper = mountChatView(pinia, {
+      template:
+        "<button data-testid=\"submit-batch\" @click=\"$emit('batch-submit', [{ question_index: 0, skip: true }, { question_index: 1, answer: 'A' }])\">提交</button>",
+      props: ["message"],
+      emits: ["batch-submit"],
+    });
+
+    await wrapper.get('button[data-testid="submit-batch"]').trigger("click");
+    await flushPromises();
+
+    // Skip entry travels verbatim in the answers array.
+    expect(vi.mocked(batchSubmitAnswer).mock.calls[0][1]).toEqual([
+      { question_index: 0, skip: true },
+      { question_index: 1, answer: "A" },
+    ]);
+
+    // User answer summary marks the skipped question instead of "undefined".
+    const userMessage = store.messages.find((msg) => msg.role === "user");
+    expect(userMessage?.content).toContain("Skipped");
+    expect(userMessage?.content).not.toContain("undefined");
+
+    // Skipped question's feedback bubble shows the backend skip text.
+    const feedbacks = store.messages.filter((msg) => msg.role === "feedback");
+    expect(feedbacks[0].content).toContain("已跳过本题。");
+    expect(feedbacks[0].is_correct).toBeNull();
+    expect(feedbacks[1].content).toContain("回答正确！");
+
+    wrapper.unmount();
   });
 });
